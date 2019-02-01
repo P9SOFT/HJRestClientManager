@@ -1,0 +1,13 @@
+source 'https://github.com/CocoaPods/Specs.git'
+platform :ios, '8.0'
+
+project './SimpleClient/SimpleClient'
+
+target "SimpleClient" do
+	pod 'Hydra'
+	pod 'HJAsyncHttpDeliverer', :path => '~/Workspace/OpenSources/HJAsyncHttpDeliverer'
+	pod 'HJHttpApiExecutor', :path => '~/Workspace/OpenSources/HJHttpApiExecutor'
+	pod 'HJResourceManager', :path => '~/Workspace/OpenSources/HJResourceManager'
+	pod 'JSONModel'
+	pod 'ObjectMapper', '~> 3.4'
+end
