@@ -182,7 +182,7 @@ class HJRestClientManager : HYManager {
             queueing.removeAll()
         }
         
-        func peekQueueing() -> Request? {
+        func popQueueing() -> Request? {
             if let first = queueing.first {
                 waiting[first.identifier] = first
                 queueing.removeFirst()
@@ -406,11 +406,13 @@ class HJRestClientManager : HYManager {
         }
         
         let group = RequestGroup(requests: requests, callIdentifier: callIdentifier, stopWhenFailed: stopWhenFailed, completion: completion)
+        var req:Request?
         lockQueue.sync {
             requestingGroups[group.identifier] = group
+            req = group.popQueueing()
         }
         
-        if let req = group.peekQueueing() {
+        if let req = req {
             if let apiKey = req.apiKey {
                 if let reqHandler = req.requestModelFromResultHandler, let reqModel = reqHandler(nil) {
                     request(method: req.method, apiKey: apiKey, requestModel: reqModel, responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
@@ -883,7 +885,12 @@ extension HJRestClientManager {
             return
         }
         
-        if let req = group.peekQueueing() {
+        var req:Request?
+        lockQueue.sync {
+            req = group.popQueueing()
+        }
+        
+        if let req = req {
             if let apiKey = req.apiKey {
                 if let reqHandler = req.requestModelFromResultHandler  {
                     request(method: req.method, apiKey: apiKey, requestModel: reqHandler(doneRequestResult), responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
