@@ -8,9 +8,9 @@
 //  Licensed under the MIT license.
 
 import Foundation
-//#if COCOAPODS
-//import HJHttpApiExecutor
-//#endif
+#if canImport(HJHttpApiExecutor)
+import HJHttpApiExecutor
+#endif
 
 class HJRestClientExecutor: HJHttpApiExecutor {
     

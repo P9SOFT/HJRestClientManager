@@ -144,7 +144,7 @@ class ViewController: UIViewController {
 //            return nil
 //        }
         
-        let reqA = SimpleClientManager.Request(method: .get, apiKey: "get", requestModel: reqm, responseModelRefer: ResponseModelA.self, updateCache: false) { (result:[String : Any]?) -> [String : Any]? in
+        let reqA = SimpleClientManager.RequestNode(method: .get, apiKey: "get", requestModel: reqm, responseModelRefer: ResponseModelA.self, updateCache: false) { (result:[String : Any]?) -> [String : Any]? in
             print("done reqA")
             return nil
         }
@@ -158,7 +158,7 @@ class ViewController: UIViewController {
 //            return nil
 //        }
         
-        let reqB = SimpleClientManager.Request(method: .post, apiKey: "post", requestModelFromResultHandler: { (result:[String : Any]?) -> Any? in
+        let reqB = SimpleClientManager.RequestNode(method: .post, apiKey: "post", requestModelFromResultHandler: { (result:[String : Any]?) -> Any? in
             if let responseModel = result?[HJRestClientManager.NotificationResponseModel] as? ResponseModelA, let url = responseModel.url {
                 let reqm = RequestModelA()
                 reqm.a = url
@@ -167,43 +167,26 @@ class ViewController: UIViewController {
             return nil
         }, responseModelRefer: ResponseModelB.self, updateCache: false, completion: nil)
 
-        let reqC = SimpleClientManager.Request(method: .put, apiKey: "put", requestModelFromResultHandler: { (result:[String : Any]?) -> Any? in
+        let reqC = SimpleClientManager.RequestNode(method: .put, apiKey: "put", requestModelFromResultHandler: { (result:[String : Any]?) -> Any? in
             if let responseModel = result?[HJRestClientManager.NotificationResponseModel] as? ResponseModelB, let url = responseModel.url {
                 return ["a":url]
             }
             return nil
         }, responseModelRefer: ResponseModelB.self, updateCache: true, completion: nil)
-//
-//        let reqX = SimpleClientManager.Request(method: .get, apiKey: "post", requestModel: reqm, responseModelRefer: ResponseModelA.self, updateCache: false) { (result:[String : Any]?) -> [String : Any]? in
-//            print("done reqX")
-//            return nil
-//        }
         
-//        SimpleClientManager.shared.requestConcurrent([reqA, reqB, reqC], callIdentifier: nil) { (result:[String : Any]?) -> [String : Any]? in
-//
-//            guard let result = result, let eventValue = result[HJRestClientManager.NotificationEvent] as? Int, let event = HJRestClientManager.Event(rawValue: eventValue) else {
-//                return nil
-//            }
-//
-//            switch event {
-//            case .doneRequestGroup :
-//                if let results = result[HJRestClientManager.NotificationRequestGroupResults] as? [[String:Any]] {
-//                    for res in results {
-//                        if res[HJRestClientManager.NotificationResponseModel] == nil {
-//                            print("something wrong in request!")
-//                        }
-//                    }
-//                    print("all group req done.")
-//                } else {
-//                    print("something wrong in group!")
-//                }
-//            default :
-//                break
-//            }
-//            return nil
-//        }
+        let reqL = SimpleClientManager.RequestNode(requestName: "local job") { (result:[String : Any]?) -> Any? in
+            print("local job done.")
+            return result?[HJRestClientManager.NotificationResponseModel]
+        }
+
+        let reqX = SimpleClientManager.RequestNode(method: .get, apiKey: "post", requestModel: reqm, responseModelRefer: ResponseModelA.self, updateCache: false) { (result:[String : Any]?) -> [String : Any]? in
+            print("done reqX")
+            return nil
+        }
         
-        SimpleClientManager.shared.requestSerial([reqA, reqB, reqC], callIdentifier: nil, stopWhenFailed: true) { (result:[String : Any]?) -> [String : Any]? in
+        let reqList = [reqA, reqB, reqL, reqC, reqX]
+//        SimpleClientManager.shared.requestConcurrent(reqList, callIdentifier: nil) { (result:[String : Any]?) -> [String : Any]? in
+        SimpleClientManager.shared.requestSerial(reqList, callIdentifier: nil, stopWhenFailed: true) { (result:[String : Any]?) -> [String : Any]? in
 
             guard let result = result, let eventValue = result[HJRestClientManager.NotificationEvent] as? Int, let event = HJRestClientManager.Event(rawValue: eventValue) else {
                 return nil
@@ -218,7 +201,7 @@ class ViewController: UIViewController {
                 if let results = result[HJRestClientManager.NotificationRequestGroupResults] as? [[String:Any]] {
                     for res in results {
                         if res[HJRestClientManager.NotificationResponseModel] == nil {
-                            print("something wrong in request!")
+                            print("request have no response.")
                         }
                     }
                     print("all group req done.")
