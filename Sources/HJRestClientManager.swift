@@ -9,10 +9,15 @@
 
 import Foundation
 import CommonCrypto
-//#if COCOAPODS
-//import Hydra
-//import HJResourceManager
-//#endif
+#if canImport(Hydra)
+import Hydra
+#endif
+#if canImport(HJResourceManager)
+import HJResourceManager
+#endif
+#if canImport(HJHttpApiExecutor)
+import HJHttpApiExecutor
+#endif
 
 /*!
  @abstract Notification name of HJRestClientManager.
@@ -24,18 +29,18 @@ extension Notification.Name {
     public static let HJRestClientManager = Notification.Name.HJRestClientManager
 }
 
-typealias HJRestClientPreProcessBlock = (_ requestModel:Any?, _ responseModel:Any?) -> Any?
-typealias HJRestClientPostProcessBlock = (_ requestModel:Any?, _ responseModel:Any?) -> Void
-typealias HJRestClientCompletionBlock = @convention(block) (_ resultDict:[String:Any]?) -> [String:Any]?
-typealias HJRestClientRequestModelFromResultBlock = (_ resultDict:[String:Any]?) -> Any?
+public typealias HJRestClientPreProcessBlock = (_ requestModel:Any?, _ responseModel:Any?) -> Any?
+public typealias HJRestClientPostProcessBlock = (_ requestModel:Any?, _ responseModel:Any?) -> Void
+public typealias HJRestClientCompletionBlock = @convention(block) (_ resultDict:[String:Any]?) -> [String:Any]?
+public typealias HJRestClientRequestModelFromResultBlock = (_ resultDict:[String:Any]?) -> Any?
 
-typealias HJRestClientBodyFromRequestModelBlock = (_ requestModel:Any?) -> Data?
-typealias HJRestClientContentTypeFromRequestModelBlock = (_ requestModel:Any?) -> String
-typealias HJRestClientResponseModelFromDataBlock = (_ data:Data, _ serverAddress:String, _ endpoint:String?, _ requestModel:Any?, _ responseModelRefer:Any?) -> Any?
-typealias HJRestClientResponseDataFromModelBlock = (_ model:Any, _ serverAddress:String, _ endpoint:String?, _ requestModel:Any?) -> Data?
-typealias HJRestClientDidReceiveResponseBlock = (_ urlResponse:URLResponse) -> Void
+public typealias HJRestClientBodyFromRequestModelBlock = (_ requestModel:Any?) -> Data?
+public typealias HJRestClientContentTypeFromRequestModelBlock = (_ requestModel:Any?) -> String
+public typealias HJRestClientResponseModelFromDataBlock = (_ data:Data, _ serverAddress:String, _ endpoint:String?, _ requestModel:Any?, _ responseModelRefer:Any?) -> Any?
+public typealias HJRestClientResponseDataFromModelBlock = (_ model:Any, _ serverAddress:String, _ endpoint:String?, _ requestModel:Any?) -> Data?
+public typealias HJRestClientDidReceiveResponseBlock = (_ urlResponse:URLResponse) -> Void
 
-class HJRestClientManager : HYManager {
+open class HJRestClientManager : HYManager {
     
     fileprivate enum InterestedHttpStatus:Int {
         case dontcareJustLikeError = 0
@@ -51,25 +56,25 @@ class HJRestClientManager : HYManager {
         case cacheControl = "Cache-Control"
     }
     
-    @objc static let NotificationEvent = "HJRestClientManagerNotificationEvent"
-    @objc static let NotificationServerAddress = "HJRestClientManagerNotificationServerAddress"
-    @objc static let NotificationEndpoint = "HJRestClientManagerNotificationEndpoint"
-    @objc static let NotificationRequestModel = "HJRestClientManagerNotificationRequestModel"
-    @objc static let NotificationCallIdentifier = "HJRestClientManagerNotificationCallIdentifier"
-    @objc static let NotificationCompletion = "HJRestClientManagerNotificationCompletion"
-    @objc static let NotificationResponseModel = "HJRestClientManagerNotificationResponseModel"
-    @objc static let NotificationTimestamp = "HJRestClientManagerNotificationTimestamp"
-    @objc static let NotificationHttpStatus = "HJRestClientManagerNotificationHttpStatus"
-    @objc static let NotificationHttpHeaders = "HJRestClientManagerNotificationHttpHeaders"
-    @objc static let NotificationSharedDataKey = "HJRestClientManagerNotificationSharedDatakey"
-    @objc static let NotificationSharedDataModel = "HJRestClientManagerNotificationSharedDataModel"
-    @objc static let NotificationRequestGroupResults = "HJRestClientManagerNotificationRequestGroupResults"
-    @objc static let NotificationRequestGroupStopped = "HJRestClientManagerNotificationRequestGroupStopped"
-    @objc static let NotificationCustomEventIdentifier = "HJRestClientManagerNotificationCustomEventIdentifier"
+    @objc public static let NotificationEvent = "HJRestClientManagerNotificationEvent"
+    @objc public static let NotificationServerAddress = "HJRestClientManagerNotificationServerAddress"
+    @objc public static let NotificationEndpoint = "HJRestClientManagerNotificationEndpoint"
+    @objc public static let NotificationRequestModel = "HJRestClientManagerNotificationRequestModel"
+    @objc public static let NotificationCallIdentifier = "HJRestClientManagerNotificationCallIdentifier"
+    @objc public static let NotificationCompletion = "HJRestClientManagerNotificationCompletion"
+    @objc public static let NotificationResponseModel = "HJRestClientManagerNotificationResponseModel"
+    @objc public static let NotificationTimestamp = "HJRestClientManagerNotificationTimestamp"
+    @objc public static let NotificationHttpStatus = "HJRestClientManagerNotificationHttpStatus"
+    @objc public static let NotificationHttpHeaders = "HJRestClientManagerNotificationHttpHeaders"
+    @objc public static let NotificationSharedDataKey = "HJRestClientManagerNotificationSharedDatakey"
+    @objc public static let NotificationSharedDataModel = "HJRestClientManagerNotificationSharedDataModel"
+    @objc public static let NotificationRequestGroupResults = "HJRestClientManagerNotificationRequestGroupResults"
+    @objc public static let NotificationRequestGroupStopped = "HJRestClientManagerNotificationRequestGroupStopped"
+    @objc public static let NotificationCustomEventIdentifier = "HJRestClientManagerNotificationCustomEventIdentifier"
     fileprivate static let NotificationGruopIdentifier = "HJRestClientManagerNotificationGruopIdentifier"
     fileprivate static let NotificationRequestIdentifier = "HJRestClientManagerNotificationRequestIdentifier"
     
-    @objc(HJRestClientManagerEvent) enum Event: Int {
+    @objc(HJRestClientManagerEvent) public enum Event: Int {
         case loadRemote
         case loadCache
         case loadSkip
@@ -85,22 +90,24 @@ class HJRestClientManager : HYManager {
         case custom
     }
     
-    @objc(HJRestClientRequest) class Request : NSObject {
+    @objc(HJRestClientRequest) public class RequestNode : NSObject {
         
         fileprivate let identifier:String = UUID().uuidString
         fileprivate var resultDict:[String:Any]?
+        fileprivate var isLocalRequest:Bool = false
+        fileprivate var localRequestName:String = ""
         
-        var method:HJHttpApiExecutorHttpMethodType = .get
-        var apiKey:String?
-        var serverAddress:String?
-        var endpoint:String?
-        var requestModel:Any?
-        var responseModelRefer:Any?
-        var updateCache:Bool = false
-        var requestModelFromResultHandler:HJRestClientRequestModelFromResultBlock?
-        var completion:HJRestClientCompletionBlock?
+        private(set) var method:HJHttpApiExecutorHttpMethodType = .get
+        private(set) var apiKey:String?
+        private(set) var serverAddress:String?
+        private(set) var endpoint:String?
+        private(set) var requestModel:Any?
+        private(set) var responseModelRefer:Any?
+        private(set) var updateCache:Bool = false
+        private(set) var requestModelFromResultHandler:HJRestClientRequestModelFromResultBlock?
+        private(set) var completion:HJRestClientCompletionBlock?
         
-        @objc init(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, responseModelRefer:Any?, updateCache:Bool, completion:HJRestClientCompletionBlock?) {
+        @objc public init(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, responseModelRefer:Any?, updateCache:Bool, completion:HJRestClientCompletionBlock?) {
             self.method = method
             self.apiKey = apiKey
             self.requestModel = requestModel
@@ -109,14 +116,14 @@ class HJRestClientManager : HYManager {
             self.completion = completion
         }
         
-        @objc init(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, responseModelRefer:Any?) {
+        @objc public init(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, responseModelRefer:Any?) {
             self.method = method
             self.apiKey = apiKey
             self.requestModel = requestModel
             self.responseModelRefer = responseModelRefer
         }
         
-        @objc init(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModelFromResultHandler:@escaping HJRestClientRequestModelFromResultBlock, responseModelRefer:Any?, updateCache:Bool, completion:HJRestClientCompletionBlock?) {
+        @objc public init(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModelFromResultHandler:@escaping HJRestClientRequestModelFromResultBlock, responseModelRefer:Any?, updateCache:Bool, completion:HJRestClientCompletionBlock?) {
             
             self.method = method
             self.apiKey = apiKey
@@ -126,7 +133,7 @@ class HJRestClientManager : HYManager {
             self.completion = completion
         }
         
-        @objc init(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?, updateCache:Bool, completion:HJRestClientCompletionBlock?) {
+        @objc public init(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?, updateCache:Bool, completion:HJRestClientCompletionBlock?) {
             self.method = method
             self.serverAddress = serverAddress
             self.endpoint = endpoint
@@ -136,7 +143,7 @@ class HJRestClientManager : HYManager {
             self.completion = completion
         }
         
-        @objc init(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?) {
+        @objc public init(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?) {
             self.method = method
             self.serverAddress = serverAddress
             self.endpoint = endpoint
@@ -144,7 +151,7 @@ class HJRestClientManager : HYManager {
             self.responseModelRefer = responseModelRefer
         }
         
-        @objc init(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModelFromResultHandler:@escaping HJRestClientRequestModelFromResultBlock, responseModelRefer:Any?, updateCache:Bool, completion:HJRestClientCompletionBlock?) {
+        @objc public init(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModelFromResultHandler:@escaping HJRestClientRequestModelFromResultBlock, responseModelRefer:Any?, updateCache:Bool, completion:HJRestClientCompletionBlock?) {
             
             self.method = method
             self.serverAddress = serverAddress
@@ -153,6 +160,13 @@ class HJRestClientManager : HYManager {
             self.responseModelRefer = responseModelRefer
             self.updateCache = updateCache
             self.completion = completion
+        }
+        
+        @objc public init(requestName:String, localProcessHandler:@escaping HJRestClientRequestModelFromResultBlock) {
+            
+            self.isLocalRequest = true
+            self.localRequestName = requestName
+            self.requestModelFromResultHandler = localProcessHandler
         }
     }
     
@@ -160,14 +174,14 @@ class HJRestClientManager : HYManager {
         
         let identifier:String = UUID().uuidString
         var stopWhenFailed:Bool = false
-        var order:[Request] = []
-        var queueing:[Request] = []
-        var waiting:[String:Request] = [:]
-        var done:[String:Request] = [:]
+        var order:[RequestNode] = []
+        var queueing:[RequestNode] = []
+        var waiting:[String:RequestNode] = [:]
+        var done:[String:RequestNode] = [:]
         var callIdentifier:String?
         var completion:HJRestClientCompletionBlock?
         
-        init(requests:[Request], callIdentifier:String?, stopWhenFailed:Bool, completion:HJRestClientCompletionBlock?) {
+        init(requests:[RequestNode], callIdentifier:String?, stopWhenFailed:Bool, completion:HJRestClientCompletionBlock?) {
             self.stopWhenFailed = stopWhenFailed
             self.order = requests
             self.queueing = requests
@@ -182,7 +196,7 @@ class HJRestClientManager : HYManager {
             queueing.removeAll()
         }
         
-        func popQueueing() -> Request? {
+        func popQueueing() -> RequestNode? {
             if let first = queueing.first {
                 waiting[first.identifier] = first
                 queueing.removeFirst()
@@ -214,7 +228,7 @@ class HJRestClientManager : HYManager {
     }
     
     static fileprivate let singleton = HJRestClientManager()
-    @objc static func shared() -> HJRestClientManager {
+    @objc static public func shared() -> HJRestClientManager {
         
         return HJRestClientManager.singleton
     }
@@ -245,9 +259,9 @@ class HJRestClientManager : HYManager {
     fileprivate var processBlockForResponseDataFromModel:HJRestClientResponseDataFromModelBlock?
     fileprivate var processBlockForDidReceiveResponse:HJRestClientDidReceiveResponseBlock?
     
-    @objc var useEtag:Bool = true
+    @objc public var useEtag:Bool = true
     
-    @objc var timeoutInterval:TimeInterval {
+    @objc public var timeoutInterval:TimeInterval {
         get {
             return apiExecutor.timeoutInterval
         }
@@ -256,7 +270,7 @@ class HJRestClientManager : HYManager {
         }
     }
     
-    @objc func standby(withRepositoryPath repositoryPath:String, workerName:String) -> Bool {
+    @objc public func standby(withRepositoryPath repositoryPath:String, workerName:String) -> Bool {
         
         if standby == true {
             return false
@@ -339,12 +353,12 @@ class HJRestClientManager : HYManager {
         return true
     }
     
-    @objc @discardableResult func request(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?, callIdentifier:String?, updateCache:Bool, completion:HJRestClientCompletionBlock?) -> Bool {
+    @objc @discardableResult public func request(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?, callIdentifier:String?, updateCache:Bool, completion:HJRestClientCompletionBlock?) -> Bool {
         
         return request(method: method, serverAddress: serverAddress, endpoint: endpoint, requestModel: requestModel, responseModelRefer: responseModelRefer, callIdentifier: callIdentifier, updateCache: updateCache, groupIdentifier:nil, requestIdentifier:nil, completion: completion)
     }
     
-    @objc @discardableResult func request(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?, completion:HJRestClientCompletionBlock?) -> Bool {
+    @objc @discardableResult public func request(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?, completion:HJRestClientCompletionBlock?) -> Bool {
         
         return request(method: method, serverAddress: serverAddress, endpoint: endpoint, requestModel: requestModel, responseModelRefer: responseModelRefer, callIdentifier: nil, updateCache: false, completion: completion)
     }
@@ -358,17 +372,53 @@ class HJRestClientManager : HYManager {
         return request(method: method, serverAddress: info.serverAddress, endpoint: info.endpoint, requestModel: requestModel, responseModelRefer: responseModelRefer, callIdentifier: callIdentifier, updateCache: updateCache, groupIdentifier: groupIdentifier, requestIdentifier: requestIdentifier, completion: completion)
     }
     
-    @objc @discardableResult func request(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, responseModelRefer:Any?, callIdentifier:String?, updateCache:Bool, completion:HJRestClientCompletionBlock?) -> Bool {
+    @objc @discardableResult public func request(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, responseModelRefer:Any?, callIdentifier:String?, updateCache:Bool, completion:HJRestClientCompletionBlock?) -> Bool {
         
         return request(method: method, apiKey: apiKey, requestModel: requestModel, responseModelRefer: responseModelRefer, callIdentifier: callIdentifier, updateCache: updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion)
     }
     
-    @objc @discardableResult func request(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, responseModelRefer:Any?, completion:HJRestClientCompletionBlock?) -> Bool {
+    @objc @discardableResult public func request(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, responseModelRefer:Any?, completion:HJRestClientCompletionBlock?) -> Bool {
         
         return request(method: method, apiKey: apiKey, requestModel: requestModel, responseModelRefer: responseModelRefer, callIdentifier: nil, updateCache: false, completion: completion)
     }
     
-    @objc @discardableResult func requestConcurrent(_ requests:[Request], callIdentifier:String?, completion:HJRestClientCompletionBlock?) -> Bool {
+    fileprivate func processRequest(req:RequestNode, group:RequestGroup, doneRequestResult:[String:Any]?) {
+        
+        if req.isLocalRequest == false {
+            if let apiKey = req.apiKey {
+                if let reqHandler = req.requestModelFromResultHandler {
+                    request(method: req.method, apiKey: apiKey, requestModel: reqHandler(doneRequestResult), responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
+                } else {
+                    request(method: req.method, apiKey: apiKey, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
+                }
+            } else if let serverAddress = req.serverAddress {
+                if let reqHandler = req.requestModelFromResultHandler {
+                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, requestModel: reqHandler(doneRequestResult), responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
+                } else {
+                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
+                }
+            }
+        } else {
+            DispatchQueue.global(qos: .background).async {
+                var responseModel:Any?
+                if let reqHandler = req.requestModelFromResultHandler {
+                    responseModel = reqHandler(doneRequestResult)
+                }
+                var resultDict:[String:Any] = [:]
+                resultDict[HJRestClientManager.NotificationEvent] = Event.custom.rawValue
+                resultDict[HJRestClientManager.NotificationCustomEventIdentifier] = req.localRequestName
+                if let responseModel = responseModel {
+                    resultDict[HJRestClientManager.NotificationResponseModel] = responseModel
+                }
+                self.raiseCustomEvent(req.localRequestName, withParameter: (responseModel != nil ? [HJRestClientManager.NotificationResponseModel:responseModel!] : nil))
+                DispatchQueue.main.async(execute: {
+                    self.popNextOf(groupIdentifier: group.identifier, doneRequestIdentifier: req.identifier, doneRequestResult: resultDict)
+                })
+            }
+        }
+    }
+    
+    @objc @discardableResult public func requestConcurrent(_ requests:[RequestNode], callIdentifier:String?, completion:HJRestClientCompletionBlock?) -> Bool {
         
         guard standby == true else {
             return false
@@ -381,57 +431,33 @@ class HJRestClientManager : HYManager {
         }
         
         requests.forEach { (req) in
-            if let apiKey = req.apiKey {
-                if let reqHandler = req.requestModelFromResultHandler {
-                    request(method: req.method, apiKey: apiKey, requestModel: reqHandler(nil), responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                } else {
-                    request(method: req.method, apiKey: apiKey, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                }
-            } else if let serverAddress = req.serverAddress {
-                if let reqHandler = req.requestModelFromResultHandler {
-                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, requestModel: reqHandler(nil), responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                } else {
-                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                }
-            }
+            processRequest(req: req, group: group, doneRequestResult: nil)
         }
         
         return true
     }
     
-    @objc @discardableResult func requestSerial(_ requests:[Request], callIdentifier:String?, stopWhenFailed:Bool, completion:HJRestClientCompletionBlock?) -> Bool {
+    @objc @discardableResult public func requestSerial(_ requests:[RequestNode], callIdentifier:String?, stopWhenFailed:Bool, completion:HJRestClientCompletionBlock?) -> Bool {
         
         guard standby == true else {
             return false
         }
         
         let group = RequestGroup(requests: requests, callIdentifier: callIdentifier, stopWhenFailed: stopWhenFailed, completion: completion)
-        var req:Request?
+        var req:RequestNode?
         lockQueue.sync {
             requestingGroups[group.identifier] = group
             req = group.popQueueing()
         }
         
         if let req = req {
-            if let apiKey = req.apiKey {
-                if let reqHandler = req.requestModelFromResultHandler, let reqModel = reqHandler(nil) {
-                    request(method: req.method, apiKey: apiKey, requestModel: reqModel, responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                } else {
-                    request(method: req.method, apiKey: apiKey, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                }
-            } else if let serverAddress = req.serverAddress {
-                if let reqHandler = req.requestModelFromResultHandler, let reqModel = reqHandler(nil) {
-                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, requestModel: reqModel, responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                } else {
-                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                }
-            }
+            processRequest(req: req, group: group, doneRequestResult: nil)
         }
         
         return true
     }
     
-    @objc func cachedResponseModel(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?, expireTimeInterval:TimeInterval) -> Any? {
+    @objc public func cachedResponseModel(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?, expireTimeInterval:TimeInterval) -> Any? {
         
         guard standby == true else {
             return nil
@@ -454,7 +480,7 @@ class HJRestClientManager : HYManager {
         return nil
     }
     
-    @objc func cachedResponseModel(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, responseModelRefer:Any?, expireTimeInterval:TimeInterval) -> Any? {
+    @objc public func cachedResponseModel(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, responseModelRefer:Any?, expireTimeInterval:TimeInterval) -> Any? {
         
         guard let info = serverAddressAndEndpoint(forApiKey: apiKey) else {
             return nil
@@ -463,7 +489,7 @@ class HJRestClientManager : HYManager {
         return cachedResponseModel(method: method, serverAddress: info.serverAddress, endpoint: info.endpoint, requestModel: requestModel, responseModelRefer: responseModelRefer, expireTimeInterval: expireTimeInterval)
     }
     
-    @objc @discardableResult func updateCachedResponseModel(_ responseModel:Any, forMethod method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?) -> Bool {
+    @objc @discardableResult public func updateCachedResponseModel(_ responseModel:Any, forMethod method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?) -> Bool {
         
         guard standby == true else {
             return false
@@ -487,7 +513,7 @@ class HJRestClientManager : HYManager {
         return true
     }
     
-    @objc @discardableResult func updateCachedResponseModel(_ responseModel:Any, forMethod method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?) -> Bool {
+    @objc @discardableResult public func updateCachedResponseModel(_ responseModel:Any, forMethod method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?) -> Bool {
         
         guard let info = serverAddressAndEndpoint(forApiKey: apiKey) else {
             return false
@@ -496,7 +522,7 @@ class HJRestClientManager : HYManager {
         return updateCachedResponseModel(responseModel, forMethod: method, serverAddress: info.serverAddress, endpoint: info.endpoint, requestModel: requestModel)
     }
     
-    @objc func clearCache(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?) {
+    @objc public func clearCache(method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?) {
         
         guard standby == true else {
             return
@@ -517,7 +543,7 @@ class HJRestClientManager : HYManager {
         }
     }
     
-    @objc func clearCache(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?) {
+    @objc public func clearCache(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?) {
         
         guard let info = serverAddressAndEndpoint(forApiKey: apiKey) else {
             return
@@ -640,14 +666,14 @@ class HJRestClientManager : HYManager {
 
 extension HJRestClientManager {
     
-    @objc override func name() -> String? {
+    @objc override open func name() -> String? {
         return Notification.Name.HJRestClientManager.rawValue
     }
     
-    @objc func didStandby() {
+    @objc open func didStandby() {
     }
     
-    @objc func bodyFromRequestModel(_ requestModel:Any?) -> Data? {
+    @objc open func bodyFromRequestModel(_ requestModel:Any?) -> Data? {
         
         if let processBlock = processBlockForBodyFromRequestModel {
             return processBlock(requestModel)
@@ -658,7 +684,7 @@ extension HJRestClientManager {
         return nil
     }
     
-    @objc func contentTypeFromRequestModel(_ requestModel:Any?) -> String {
+    @objc open func contentTypeFromRequestModel(_ requestModel:Any?) -> String {
         
         if let processBlock = processBlockForContentTypeFromRequestModel {
             return processBlock(requestModel)
@@ -666,7 +692,7 @@ extension HJRestClientManager {
         return "application/json"
     }
     
-    @objc func responseModel(fromData data:Data, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?) -> Any? {
+    @objc open func responseModel(fromData data:Data, serverAddress:String, endpoint:String?, requestModel:Any?, responseModelRefer:Any?) -> Any? {
         
         if let processBlock = processBlockForResponseModelFromData {
             return processBlock(data, serverAddress, endpoint, requestModel, responseModelRefer)
@@ -674,7 +700,7 @@ extension HJRestClientManager {
         return try? JSONSerialization.jsonObject(with: data, options:.mutableContainers)
     }
     
-    @objc func responseData(fromModel model:Any, serverAddress:String, endpoint:String?, requestModel:Any?) -> Data? {
+    @objc open func responseData(fromModel model:Any, serverAddress:String, endpoint:String?, requestModel:Any?) -> Data? {
         
         if let processBlock = processBlockForResponseDataFromModel {
             return processBlock(model, serverAddress, endpoint, requestModel)
@@ -685,7 +711,7 @@ extension HJRestClientManager {
         return try? JSONSerialization.data(withJSONObject: model, options:JSONSerialization.WritingOptions.prettyPrinted)
     }
     
-    @objc func didReceiveResponse(_ urlResponse:URLResponse) {
+    @objc open func didReceiveResponse(_ urlResponse:URLResponse) {
         
         if let processBlock = processBlockForDidReceiveResponse {
             processBlock(urlResponse)
@@ -695,27 +721,27 @@ extension HJRestClientManager {
 
 extension HJRestClientManager {
     
-    @objc func setProcessBlock(forBodyFromRequestModel block: @escaping HJRestClientBodyFromRequestModelBlock) {
+    @objc public func setProcessBlock(forBodyFromRequestModel block: @escaping HJRestClientBodyFromRequestModelBlock) {
         
         processBlockForBodyFromRequestModel = block
     }
     
-    @objc func setProcessBlock(forContentTypeFromRequestModel block: @escaping HJRestClientContentTypeFromRequestModelBlock) {
+    @objc public func setProcessBlock(forContentTypeFromRequestModel block: @escaping HJRestClientContentTypeFromRequestModelBlock) {
         
         processBlockForContentTypeFromRequestModel = block
     }
     
-    @objc func setProcessBlock(forResponseModelFromData block: @escaping HJRestClientResponseModelFromDataBlock) {
+    @objc public func setProcessBlock(forResponseModelFromData block: @escaping HJRestClientResponseModelFromDataBlock) {
         
         processBlockForResponseModelFromData = block
     }
     
-    @objc func setProcessBlock(forResponseDataFromModel block: @escaping HJRestClientResponseDataFromModelBlock) {
+    @objc public func setProcessBlock(forResponseDataFromModel block: @escaping HJRestClientResponseDataFromModelBlock) {
         
         processBlockForResponseDataFromModel = block
     }
     
-    @objc func setProcessBlock(forDidReceiveResponse block: @escaping HJRestClientDidReceiveResponseBlock) {
+    @objc public func setProcessBlock(forDidReceiveResponse block: @escaping HJRestClientDidReceiveResponseBlock) {
         
         processBlockForDidReceiveResponse = block
     }
@@ -861,7 +887,7 @@ extension HJRestClientManager {
         
         if group.stopWhenFailed == true, let result = doneRequestResult, let eventValue = result[HJRestClientManager.NotificationEvent] as? Int, let event = Event(rawValue: eventValue) {
             switch event {
-            case .loadRemote, .loadSkip, .loadCache :
+            case .loadRemote, .loadSkip, .loadCache, .custom :
                 break
             default :
                 lockQueue.sync {
@@ -874,43 +900,27 @@ extension HJRestClientManager {
         }
         
         var left:Int = 0
+        var req:RequestNode?
         lockQueue.sync {
             left = group.waitingToDone(identifier: doneRequestIdentifier)
             if left == 0 {
                 requestingGroups.removeValue(forKey: group.identifier)
             }
+            req = group.popQueueing()
         }
         if left == 0 {
             reportRequestGroup(group)
             return
         }
-        
-        var req:Request?
-        lockQueue.sync {
-            req = group.popQueueing()
-        }
-        
         if let req = req {
-            if let apiKey = req.apiKey {
-                if let reqHandler = req.requestModelFromResultHandler  {
-                    request(method: req.method, apiKey: apiKey, requestModel: reqHandler(doneRequestResult), responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                } else {
-                    request(method: req.method, apiKey: apiKey, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                }
-            } else if let serverAddress = req.serverAddress {
-                if let reqHandler = req.requestModelFromResultHandler {
-                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, requestModel: reqHandler(doneRequestResult), responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                } else {
-                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completion)
-                }
-            }
+            processRequest(req: req, group: group, doneRequestResult: doneRequestResult)
         }
     }
 }
 
 extension HJRestClientManager {
     
-    @objc @discardableResult func setServerAddresses(_ serverAddresses:[String:String]) -> Bool {
+    @objc @discardableResult public func setServerAddresses(_ serverAddresses:[String:String]) -> Bool {
         
         guard serverAddresses.count > 0 else {
             return false
@@ -929,7 +939,7 @@ extension HJRestClientManager {
         return true
     }
     
-    @objc @discardableResult func setApiWith(serverKey:String, endpoint:String, forKey key:String) -> Bool {
+    @objc @discardableResult public func setApiWith(serverKey:String, endpoint:String, forKey key:String) -> Bool {
         
         lockData.sync {
             apis[key] = (serverKey: serverKey, endpoint: (endpoint.hasPrefix("/") ? endpoint : "/\(endpoint)"))
@@ -939,7 +949,7 @@ extension HJRestClientManager {
         return true
     }
     
-    @objc func serverAddressOfApi(forKey key:String) -> String? {
+    @objc public func serverAddressOfApi(forKey key:String) -> String? {
         
         var serverAddress:String?
         lockData.sync {
@@ -951,7 +961,7 @@ extension HJRestClientManager {
         return serverAddress
     }
     
-    @objc func endpointOfApi(forKey key:String) -> String? {
+    @objc public func endpointOfApi(forKey key:String) -> String? {
         
         var endpoint:String?
         lockData.sync {
@@ -963,7 +973,7 @@ extension HJRestClientManager {
         return endpoint
     }
     
-    @objc func urlStringOfApi(forKey key: String) -> String? {
+    @objc public func urlStringOfApi(forKey key: String) -> String? {
         
         var urlString:String?
         lockData.sync {
@@ -975,7 +985,7 @@ extension HJRestClientManager {
         return urlString
     }
     
-    @objc func replaceComponents(forEndpoint endpoint:String) -> [String:String]? {
+    @objc public func replaceComponents(forEndpoint endpoint:String) -> [String:String]? {
         
         var components:[String:String]?
         lockData.sync {
@@ -985,28 +995,28 @@ extension HJRestClientManager {
         return components
     }
     
-    @objc func setReplaceComponents(_ components:[String:String], forEndpoint endpoint:String) {
+    @objc public func setReplaceComponents(_ components:[String:String], forEndpoint endpoint:String) {
         
         lockData.sync {
             apiExecutor.replacePathComponentsForEndpoints[endpoint] = components
         }
     }
     
-    @objc func removeReplaceComponents(forEndpoint endpoint:String) {
+    @objc public func removeReplaceComponents(forEndpoint endpoint:String) {
         
         lockData.sync {
             _ = apiExecutor.replacePathComponentsForEndpoints.removeValue(forKey: endpoint)
         }
     }
     
-    @objc func removeAllReplaceComponents() {
+    @objc public func removeAllReplaceComponents() {
         
         lockData.sync {
             apiExecutor.replacePathComponentsForEndpoints.removeAll()
         }
     }
     
-    @objc func preProcessBlock(forApiKey apiKey:String) -> HJRestClientPreProcessBlock? {
+    @objc public func preProcessBlock(forApiKey apiKey:String) -> HJRestClientPreProcessBlock? {
         
         var processBlock:HJRestClientPreProcessBlock?
         lockData.sync {
@@ -1016,7 +1026,7 @@ extension HJRestClientManager {
         return processBlock
     }
     
-    @objc @discardableResult func setPreProcessBlock(_ processBlock:@escaping HJRestClientPreProcessBlock, forApiKeys apiKeys:[String]) -> Bool {
+    @objc @discardableResult public func setPreProcessBlock(_ processBlock:@escaping HJRestClientPreProcessBlock, forApiKeys apiKeys:[String]) -> Bool {
         
         lockData.sync {
             apiKeys.forEach({ (apiKey) in
@@ -1027,21 +1037,21 @@ extension HJRestClientManager {
         return true
     }
     
-    @objc func removePreProcessBlock(forApiKey apiKey:String) {
+    @objc public func removePreProcessBlock(forApiKey apiKey:String) {
         
         lockData.sync {
             _ = preProcessBlockForApis.removeValue(forKey: apiKey)
         }
     }
     
-    @objc func removeAllPreProcessBlocks() {
+    @objc public func removeAllPreProcessBlocks() {
         
         lockData.sync {
             preProcessBlockForApis.removeAll()
         }
     }
     
-    @objc func postProcessBlock(forApiKey apiKey:String) -> HJRestClientPostProcessBlock? {
+    @objc public func postProcessBlock(forApiKey apiKey:String) -> HJRestClientPostProcessBlock? {
         
         var processBlock:HJRestClientPostProcessBlock?
         lockData.sync {
@@ -1051,7 +1061,7 @@ extension HJRestClientManager {
         return processBlock
     }
     
-    @objc @discardableResult func setPostProcessBlock(_ processBlock:@escaping HJRestClientPostProcessBlock, forApiKeys apiKeys:[String]) -> Bool {
+    @objc @discardableResult public func setPostProcessBlock(_ processBlock:@escaping HJRestClientPostProcessBlock, forApiKeys apiKeys:[String]) -> Bool {
         
         lockData.sync {
             apiKeys.forEach({ (apiKey) in
@@ -1062,21 +1072,21 @@ extension HJRestClientManager {
         return true
     }
     
-    @objc func removePostProcessBlock(forApiKey apiKey:String) {
+    @objc public func removePostProcessBlock(forApiKey apiKey:String) {
         
         lockData.sync {
             _ = postProcessBlockForApis.removeValue(forKey: apiKey)
         }
     }
     
-    @objc func removeAllPostProcessBlocks() {
+    @objc public func removeAllPostProcessBlocks() {
         
         lockData.sync {
             postProcessBlockForApis.removeAll()
         }
     }
     
-    @objc func autoSettingValue(forHeaderField headerField:String) -> String? {
+    @objc public func autoSettingValue(forHeaderField headerField:String) -> String? {
         
         var value:String?
         lockData.sync {
@@ -1085,28 +1095,28 @@ extension HJRestClientManager {
         return value
     }
     
-    @objc func setAutoSetting(value:String, forHeaderField headerField:String) {
+    @objc public func setAutoSetting(value:String, forHeaderField headerField:String) {
         
         lockData.sync {
             apiExecutor.autoSettingHeaders[headerField] = value
         }
     }
     
-    @objc func removeAutoSettingValue(forHeaderField headerField:String) {
+    @objc public func removeAutoSettingValue(forHeaderField headerField:String) {
         
         lockData.sync {
             _ = apiExecutor.autoSettingHeaders.removeValue(forKey: headerField)
         }
     }
     
-    @objc func removeAllAutoSettingHeaderFieldValues() {
+    @objc public func removeAllAutoSettingHeaderFieldValues() {
         
         lockData.sync {
             apiExecutor.autoSettingHeaders.removeAll()
         }
     }
     
-    @objc func resetMaxAges() {
+    @objc public func resetMaxAges() {
         
         lockData.sync {
             maxAgeForResourceKeys.removeAll()
@@ -1114,7 +1124,7 @@ extension HJRestClientManager {
         }
     }
     
-    @objc func cipherName(forSharedDataKey key:String) -> String? {
+    @objc public func cipherName(forSharedDataKey key:String) -> String? {
         
         var name:String?
         lockData.sync {
@@ -1124,7 +1134,7 @@ extension HJRestClientManager {
         return name
     }
     
-    @objc @discardableResult func setCipher(name:String, forSharedDataKey key:String) -> Bool {
+    @objc @discardableResult public func setCipher(name:String, forSharedDataKey key:String) -> Bool {
         
         if HJResourceManager.default().cipher(forName: name) == nil {
             return false
@@ -1136,21 +1146,21 @@ extension HJRestClientManager {
         return true
     }
     
-    @objc func removeCipher(forSharedDataKey key:String) {
+    @objc public func removeCipher(forSharedDataKey key:String) {
         
         lockData.sync {
             _ = cipherNameForSharedDataKeys.removeValue(forKey: key)
         }
     }
     
-    @objc func removeAllCipherForSharedData() {
+    @objc public func removeAllCipherForSharedData() {
         
         lockData.sync {
             cipherNameForSharedDataKeys.removeAll()
         }
     }
     
-    @objc func isObserving(forSharedDataKey key:String) -> Bool {
+    @objc public func isObserving(forSharedDataKey key:String) -> Bool {
         
         var observing:Bool = false
         lockData.sync {
@@ -1160,7 +1170,7 @@ extension HJRestClientManager {
         return observing
     }
     
-    @objc @discardableResult func setObserver(forSharedDataKey key:String) -> Bool {
+    @objc @discardableResult public func setObserver(forSharedDataKey key:String) -> Bool {
         
         lockData.sync {
             observingSharedDataKeys[key] = true
@@ -1169,21 +1179,21 @@ extension HJRestClientManager {
         return true
     }
     
-    @objc func removeObserver(forSharedDataKey key:String) {
+    @objc public func removeObserver(forSharedDataKey key:String) {
         
         lockData.sync {
             _ = observingSharedDataKeys.removeValue(forKey: key)
         }
     }
     
-    @objc func removeAllObservesForSharedData() {
+    @objc public func removeAllObservesForSharedData() {
         
         lockData.sync {
             observingSharedDataKeys.removeAll()
         }
     }
     
-    @objc func sharedData(forKey key:String) -> Any? {
+    @objc public func sharedData(forKey key:String) -> Any? {
         
         guard standby == true else {
             return nil
@@ -1209,7 +1219,7 @@ extension HJRestClientManager {
         return data
     }
     
-    @objc @discardableResult func setShared(data:Any, forKey key:String) -> Bool {
+    @objc @discardableResult public func setShared(data:Any, forKey key:String) -> Bool {
         
         guard standby == true else {
             return false
@@ -1245,7 +1255,7 @@ extension HJRestClientManager {
         return true
     }
     
-    @objc @discardableResult func removeSharedData(forKey key:String) -> Bool {
+    @objc @discardableResult public func removeSharedData(forKey key:String) -> Bool {
         
         guard standby == true else {
             return false
@@ -1287,7 +1297,7 @@ extension HJRestClientManager {
         return true
     }
     
-    @objc func removeAllSharedData() {
+    @objc public func removeAllSharedData() {
         
         guard standby == true else {
             return
@@ -1304,7 +1314,7 @@ extension HJRestClientManager {
         })
     }
     
-    @objc func filePathOfSharedData(forKey key:String) -> String! {
+    @objc public func filePathOfSharedData(forKey key:String) -> String! {
         
         if let repositoryPath = self.repositoryPath {
             if let encodedKey = key.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed) {
@@ -1315,7 +1325,7 @@ extension HJRestClientManager {
         return nil
     }
     
-    @objc func cacheKey(forMethod method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?) -> String {
+    @objc public func cacheKey(forMethod method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?) -> String {
         
         var cacheKey = "\(name() ?? "hjrestclientmanager"):\(method.rawValue):\(serverAddress)"
         
@@ -1333,17 +1343,17 @@ extension HJRestClientManager {
         return cacheKey
     }
     
-    @objc func addObserver(_ observer: Any, selector aSelector: Selector) {
+    @objc public func addObserver(_ observer: Any, selector aSelector: Selector) {
         
         NotificationCenter.default.addObserver(observer, selector: aSelector, name: NSNotification.Name.init(name() ?? Notification.Name.HJRestClientManager.rawValue), object: nil)
     }
     
-    @objc func removeObserver(_ observer: Any) {
+    @objc public func removeObserver(_ observer: Any) {
         
         NotificationCenter.default.removeObserver(observer)
     }
     
-    @objc func raiseCustomEvent(_ identifier:String, withParameter parameter:[String:Any]?) {
+    @objc public func raiseCustomEvent(_ identifier:String, withParameter parameter:[String:Any]?) {
         
         var resultDict:[String:Any] = parameter ?? [:]
         resultDict[HJRestClientManager.NotificationEvent] = Event.custom.rawValue
