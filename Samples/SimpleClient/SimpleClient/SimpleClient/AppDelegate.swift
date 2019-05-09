@@ -23,9 +23,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if HJResourceManager.default().standby(withRepositoryPath: hjrmRepoPath, localJobWorkerName: HydraCommonWorkerName, remoteJobWorkerName: HydraCommonWorkerName) {
             HJResourceManager.default().bind(toHydra: Hydra.default())
         }
-        let scmRepoPath = "\(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])/simpleClientManager"
-        if SimpleClientManager.shared.standby(withRepositoryPath: scmRepoPath, workerName: HydraCommonWorkerName) == true {
-            SimpleClientManager.shared.bind(toHydra: Hydra.default())
+        let scmRepoPath = "\(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])/hjRestClientManager"
+        if HJRestClientManager.shared.standby(withRepositoryPath: scmRepoPath, workerName: HydraCommonWorkerName) == true {
+            HJRestClientManager.shared.bind(toHydra: Hydra.default())
         }
         Hydra.default().startAllWorkers()
         
