@@ -100,9 +100,10 @@ open class HJRestClientManager : HYManager {
         
         fileprivate var dogmaKey:String?
         fileprivate var method:HJHttpApiExecutorHttpMethodType = .get
-        fileprivate var apiKey:String?
         fileprivate var serverAddress:String?
+        fileprivate var serverKey:String?
         fileprivate var endpoint:String?
+        fileprivate var apiKey:String?
         fileprivate var extraHeaders:[String:Any]?
         fileprivate var requestModel:Any?
         fileprivate var responseModelRefer:Any?
@@ -130,15 +131,16 @@ open class HJRestClientManager : HYManager {
             return self
         }
         
-        @objc public func apiKey(_ key:String) -> RequestNode {
-            self.apiKey = key
-            self.serverAddress = nil
-            self.endpoint = nil
+        @objc public func serverAddress(_ serverAddress:String) -> RequestNode {
+            self.serverAddress = serverAddress
+            self.serverKey = nil
+            self.apiKey = nil
             return self
         }
         
-        @objc public func serverAddress(_ serverAddress:String) -> RequestNode {
-            self.serverAddress = serverAddress
+        @objc public func serverKey(_ serverKey:String) -> RequestNode {
+            self.serverKey = serverKey
+            self.serverAddress = nil
             self.apiKey = nil
             return self
         }
@@ -146,6 +148,14 @@ open class HJRestClientManager : HYManager {
         @objc public func endpoint(_ endpoint:String) -> RequestNode {
             self.endpoint = endpoint
             self.apiKey = nil
+            return self
+        }
+        
+        @objc public func apiKey(_ key:String) -> RequestNode {
+            self.apiKey = key
+            self.serverAddress = nil
+            self.serverKey = nil
+            self.endpoint = nil
             return self
         }
         
@@ -387,10 +397,10 @@ open class HJRestClientManager : HYManager {
         if let apiKey = req.apiKey {
             return request(method: req.method, apiKey: apiKey, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
-        if let serverAddress = req.serverAddress {
+        if let serverKey = req.serverKey ?? defaultServerKey, let serverAddress = servers[serverKey] {
             return request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
-        if let serverKey = defaultServerKey, let serverAddress = servers[serverKey] {
+        if let serverAddress = req.serverAddress {
             return request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
         return false
