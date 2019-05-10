@@ -46,6 +46,8 @@ class ViewController: UIViewController {
         HJRestClientManager.shared.defaultDogmaKey = "sampleDogma"
         
         HJRestClientManager.shared.setServerAddresses( ["postmanecho": "postman-echo.com"])
+        HJRestClientManager.shared.defaultServerKey = "postmanecho"
+        
         HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/post", forKey: "post")
         HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/get", forKey: "get")
         HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/put", forKey: "put")
@@ -215,6 +217,11 @@ class ViewController: UIViewController {
             DispatchQueue.main.asyncAfter(deadline: .now()+2, execute: {
                 HJRestClientManager.shared.removeSharedData(forKey: "test")
             })
+        }
+        
+        HJRestClientManager.request().endpoint("/get").requestModel(["Hello":"World!"]).responseModelRefer(ResponseModelA.self).resume { (result:[String : Any]?) -> [String : Any]? in
+            print("gotta simple")
+            return nil
         }
     }
     

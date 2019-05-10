@@ -377,6 +377,11 @@ open class HJRestClientManager : HYManager {
         return true
     }
     
+    @objc @discardableResult public static func request() -> RequestNode {
+        
+        return RequestNode()
+    }
+    
     @objc @discardableResult public func request(_ req:RequestNode, completion:HJRestClientCompletionBlock?) -> Bool {
         
         if let apiKey = req.apiKey {
