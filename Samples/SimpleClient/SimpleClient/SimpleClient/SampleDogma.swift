@@ -78,4 +78,9 @@ class SampleDogma: HJRestClientDogma {
         
         return model as? Data
     }
+    
+    func didReceiveResponse(response: URLResponse, serverAddress: String, endpoint: String?) {
+        
+        print("- did receive response from \(serverAddress)\(endpoint ?? "")")
+    }
 }

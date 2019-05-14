@@ -13,8 +13,9 @@ import Foundation
     
     @objc func bodyFromRequestModel(_ requestModel:Any?) -> Data?
     @objc func contentTypeFromRequestModel(_ requestModel:Any?) -> String?
-    @objc func responseModel(fromData data: Data, serverAddress: String, endpoint: String?, contentType:String?, requestModel: Any?, responseModelRefer: Any?) -> Any?
-    @objc func responseData(fromModel model: Any, serverAddress: String, endpoint: String?, requestModel: Any?) -> Data?
+    @objc func responseModel(fromData data:Data, serverAddress:String, endpoint:String?, contentType:String?, requestModel:Any?, responseModelRefer:Any?) -> Any?
+    @objc func responseData(fromModel model:Any, serverAddress:String, endpoint:String?, requestModel:Any?) -> Data?
+    @objc func didReceiveResponse(response:URLResponse, serverAddress:String, endpoint:String?)
 }
 
 class HJRestClientDefaultDogma: HJRestClientDogma {
@@ -61,5 +62,8 @@ class HJRestClientDefaultDogma: HJRestClientDogma {
             }
         }
         return model as? Data
+    }
+    
+    func didReceiveResponse(response:URLResponse, serverAddress:String, endpoint:String?) {
     }
 }

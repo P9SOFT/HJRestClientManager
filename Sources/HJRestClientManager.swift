@@ -29,8 +29,6 @@ extension Notification.Name {
     public static let HJRestClientManager = Notification.Name.HJRestClientManager
 }
 
-public typealias HJRestClientPreProcessBlock = (_ requestModel:Any?, _ responseModel:Any?) -> Any?
-public typealias HJRestClientPostProcessBlock = (_ requestModel:Any?, _ responseModel:Any?) -> Void
 public typealias HJRestClientCompletionBlock = @convention(block) (_ resultDict:[String:Any]?) -> [String:Any]?
 public typealias HJRestClientRequestModelFromResultBlock = (_ resultDict:[String:Any]?) -> Any?
 
@@ -283,9 +281,6 @@ open class HJRestClientManager : HYManager {
     fileprivate var apis:[String:(serverKey:String, endpoint:String)] = [:]
     fileprivate var apiKeyForServerAddressEndpointCache:[String:String] = [:]
     fileprivate var requestingGroups:[String:RequestGroup] = [:]
-    fileprivate var preProcessBlockForApis:[String:HJRestClientPreProcessBlock] = [:]
-    fileprivate var postProcessBlockForApis:[String:HJRestClientPostProcessBlock] = [:]
-    fileprivate var processBlockForDidReceiveResponse:HJRestClientDidReceiveResponseBlock?
     
     @objc public static let shared = HJRestClientManager()
     @objc public var defaultServerKey:String?
@@ -523,9 +518,6 @@ open class HJRestClientManager : HYManager {
         }
         if let filePath = HJResourceManager.default().filePath(fromReosurceQuery: resourceQuery), let data = try? Data(contentsOf: URL(fileURLWithPath: filePath)) {
             if let model = dogma.responseModel(fromData: data, serverAddress: serverAddress, endpoint: endpoint, contentType: nil, requestModel: requestModel, responseModelRefer: responseModelRefer) {
-                if let endpoint = endpoint, let apiKey = apiKey(forServerAddress: serverAddress, endpoint: endpoint), let preProcessBlock = preProcessBlock(forApiKey: apiKey) {
-                    return preProcessBlock(requestModel, model)
-                }
                 return model
             }
         }
@@ -675,17 +667,13 @@ open class HJRestClientManager : HYManager {
                             updateCachedResponseModel(receivedData, forMethod: method, serverAddress: serverAddress, endpoint: endpoint, requestModel: requestModel, dogmaKey: dogmaKey)
                         }
                         if let model = dogma.responseModel(fromData: receivedData, serverAddress: serverAddress, endpoint: endpoint, contentType: receivedContentType, requestModel: requestModel, responseModelRefer: responseModelRefer) {
-                            if let endpoint = endpoint, let apiKey = apiKey(forServerAddress: serverAddress, endpoint: endpoint), let preProcessBlock = preProcessBlock(forApiKey: apiKey) {
-                                resultDict[HJRestClientManager.NotificationResponseModel] = preProcessBlock(requestModel, model)
-                            } else {
-                                resultDict[HJRestClientManager.NotificationResponseModel] = model
-                            }
+                            resultDict[HJRestClientManager.NotificationResponseModel] = model
                         } else {
                             resultDict[HJRestClientManager.NotificationResponseModel] = receivedData
                         }
                     }
-                    if let urlResponse = urlResponse, let processBlockForDidReceiveResponse = processBlockForDidReceiveResponse {
-                        processBlockForDidReceiveResponse(urlResponse)
+                    if let urlResponse = urlResponse {
+                        dogma.didReceiveResponse(response: urlResponse, serverAddress: serverAddress, endpoint: endpoint)
                     }
                 case .notModified :
                     resultDict[HJRestClientManager.NotificationEvent] = Event.loadSkip.rawValue
@@ -711,9 +699,6 @@ open class HJRestClientManager : HYManager {
                 DispatchQueue.main.async(execute: {
                     self.popNextOf(groupIdentifier: groupIdentifier, doneRequestIdentifier: requestIdentifier, doneRequestResult: resultDict)
                 })
-            }
-            if let endpoint = endpoint, let apiKey = apiKey(forServerAddress: serverAddress, endpoint: endpoint), let postProcessBlock = postProcessBlock(forApiKey: apiKey) {
-                postProcessBlock(requestModel, resultDict[HJRestClientManager.NotificationResponseModel])
             }
             return resultDict
         }
@@ -1032,81 +1017,6 @@ extension HJRestClientManager {
         
         objc_sync_enter(self)
         apiExecutor.replacePathComponentsForEndpoints.removeAll()
-        objc_sync_exit(self)
-    }
-    
-    @objc public func setProcessBlock(forDidReceiveResponse block: @escaping HJRestClientDidReceiveResponseBlock) {
-        
-        processBlockForDidReceiveResponse = block
-    }
-    
-    @objc public func preProcessBlock(forApiKey apiKey:String) -> HJRestClientPreProcessBlock? {
-        
-        var processBlock:HJRestClientPreProcessBlock?
-        objc_sync_enter(self)
-        processBlock = preProcessBlockForApis[apiKey]
-        objc_sync_exit(self)
-        
-        return processBlock
-    }
-    
-    @objc @discardableResult public func setPreProcessBlock(_ processBlock:@escaping HJRestClientPreProcessBlock, forApiKeys apiKeys:[String]) -> Bool {
-        
-        objc_sync_enter(self)
-        apiKeys.forEach({ (apiKey) in
-            preProcessBlockForApis[apiKey] = processBlock
-        })
-        objc_sync_exit(self)
-        
-        return true
-    }
-    
-    @objc public func removePreProcessBlock(forApiKey apiKey:String) {
-        
-        objc_sync_enter(self)
-        _ = preProcessBlockForApis.removeValue(forKey: apiKey)
-        objc_sync_exit(self)
-    }
-    
-    @objc public func removeAllPreProcessBlocks() {
-        
-        objc_sync_enter(self)
-        preProcessBlockForApis.removeAll()
-        objc_sync_exit(self)
-    }
-    
-    @objc public func postProcessBlock(forApiKey apiKey:String) -> HJRestClientPostProcessBlock? {
-        
-        var processBlock:HJRestClientPostProcessBlock?
-        objc_sync_enter(self)
-        processBlock = postProcessBlockForApis[apiKey]
-        objc_sync_exit(self)
-        
-        return processBlock
-    }
-    
-    @objc @discardableResult public func setPostProcessBlock(_ processBlock:@escaping HJRestClientPostProcessBlock, forApiKeys apiKeys:[String]) -> Bool {
-        
-        objc_sync_enter(self)
-        apiKeys.forEach({ (apiKey) in
-            postProcessBlockForApis[apiKey] = processBlock
-        })
-        objc_sync_exit(self)
-        
-        return true
-    }
-    
-    @objc public func removePostProcessBlock(forApiKey apiKey:String) {
-        
-        objc_sync_enter(self)
-        _ = postProcessBlockForApis.removeValue(forKey: apiKey)
-        objc_sync_exit(self)
-    }
-    
-    @objc public func removeAllPostProcessBlocks() {
-        
-        objc_sync_enter(self)
-        postProcessBlockForApis.removeAll()
         objc_sync_exit(self)
     }
     

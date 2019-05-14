@@ -52,17 +52,6 @@ class ViewController: UIViewController {
         HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/get", forKey: "get")
         HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/put", forKey: "put")
         
-        HJRestClientManager.shared.setPreProcessBlock({ (requestModel, responseModel) -> Any? in
-            print("#### API get pre process done.")
-            return responseModel
-        }, forApiKeys: ["get"])
-        
-        HJRestClientManager.shared.setPostProcessBlock({ (requestModel, responseModel) in
-            if let res = responseModel as? ResponseModelB {
-                print("#### API post got url \(res.url ?? "-")" )
-            }
-        }, forApiKeys: ["post"])
-        
         method = .get
     }
     
