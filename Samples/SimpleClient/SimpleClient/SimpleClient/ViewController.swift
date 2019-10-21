@@ -33,29 +33,24 @@ class ViewController: UIViewController {
     }
     
     deinit {
-        SimpleClientManager.shared.removeObserver(self)
+        HJRestClientManager.shared.removeObserver(self)
     }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         
-        SimpleClientManager.shared.addObserver(self, selector: #selector(self.simpleClientManagerNotificationHandler(notification:)))
-        SimpleClientManager.shared.setServerAddresses( ["postmanecho": "postman-echo.com"])
-        SimpleClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/post", forKey: "post")
-        SimpleClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/get", forKey: "get")
-        SimpleClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/put", forKey: "put")
+        HJRestClientManager.shared.addObserver(self, selector: #selector(self.restClientManagerNotificationHandler(notification:)))
         
-        SimpleClientManager.shared.setPreProcessBlock({ (requestModel, responseModel) -> Any? in
-            print("#### API get pre process done.")
-            return responseModel
-        }, forApiKeys: ["get"])
+        HJRestClientManager.shared.setDogma(SampleDogma(), forKey: "sampleDogma")
+        HJRestClientManager.shared.defaultDogmaKey = "sampleDogma"
         
-        SimpleClientManager.shared.setPostProcessBlock({ (requestModel, responseModel) in
-            if let res = responseModel as? ResponseModelB {
-                print("#### API post got url \(res.url ?? "-")" )
-            }
-        }, forApiKeys: ["post"])
+        HJRestClientManager.shared.setServerAddresses( ["postmanecho": "postman-echo.com"])
+        HJRestClientManager.shared.defaultServerKey = "postmanecho"
+        
+        HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/post", forKey: "post")
+        HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/get", forKey: "get")
+        HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/put", forKey: "put")
         
         method = .get
     }
@@ -87,7 +82,7 @@ class ViewController: UIViewController {
 //            return
 //        }
         
-//        let body = """
+//        let reqm = """
 //                   <?xml version = \"1.0\"?>
 //                   <SOAP-ENV:Envelope
 //                   xmlns:SOAP-ENV = \"http://www.w3.org/2001/12/soap-envelope\"
@@ -106,9 +101,8 @@ class ViewController: UIViewController {
 //        reqm.a = "x"
 //        let reqm = RequestModelB(JSONString: "{\"a\":\"x\"}")
         
-//        SimpleClientManager.shared.request(method: method, apiKey: "post", requestModel: reqm, responseModelRefer: ResponseModelB.self) { (result:[String : Any]?) -> [String : Any]? in
-//
-        //            guard let result = result, let eventValue = result[HJRestClientManager.NotificationEvent] as? Int, let evnet = HJRestClientManager.Event(rawValue: eventValue) else {
+//        HJRestClientManager.shared.request(method: method, apiKey: "post", extraHeaders: nil, requestModel: reqm, responseModelRefer: ResponseModelB.self, modelDogmaKey: nil) { (result:[String : Any]?) -> [String : Any]? in
+//            guard let result = result, let eventValue = result[HJRestClientManager.NotificationEvent] as? Int, let event = HJRestClientManager.Event(rawValue: eventValue) else {
 //                return nil
 //            }
 //
@@ -144,66 +138,40 @@ class ViewController: UIViewController {
 //            return nil
 //        }
         
-        let reqA = SimpleClientManager.Request(method: .get, apiKey: "get", requestModel: reqm, responseModelRefer: ResponseModelA.self, updateCache: false) { (result:[String : Any]?) -> [String : Any]? in
+        let reqA = HJRestClientManager.RequestNode().get().apiKey("get").requestModel(reqm).responseModelRefer(ResponseModelA.self).completionHandler { (result:[String : Any]?) -> [String : Any]? in
             print("done reqA")
             return nil
         }
-        
-//        let reqB = SimpleClientManager.Request(method: .post, apiKey: "post", requestModel: reqm, responseModelRefer: ResponseModelB.self, updateCache: false) { (result:[String : Any]?) -> [String : Any]? in
-//            print("done reqB")
-//            return nil
-//        }
-//        let reqC = SimpleClientManager.Request(method: .put, apiKey: "put", requestModel: reqm, responseModelRefer: ResponseModelB.self, updateCache: false) { (result:[String : Any]?) -> [String : Any]? in
-//            print("done reqC")
-//            return nil
-//        }
-        
-        let reqB = SimpleClientManager.Request(method: .post, apiKey: "post", requestModelFromResultHandler: { (result:[String : Any]?) -> Any? in
+
+        let reqB = HJRestClientManager.RequestNode().post().apiKey("post").responseModelRefer(ResponseModelB.self).requestModelFromResultHandler { (result:[String : Any]?) -> Any? in
             if let responseModel = result?[HJRestClientManager.NotificationResponseModel] as? ResponseModelA, let url = responseModel.url {
                 let reqm = RequestModelA()
                 reqm.a = url
                 return reqm
             }
             return nil
-        }, responseModelRefer: ResponseModelB.self, updateCache: false, completion: nil)
+        }
 
-        let reqC = SimpleClientManager.Request(method: .put, apiKey: "put", requestModelFromResultHandler: { (result:[String : Any]?) -> Any? in
+        let reqC = HJRestClientManager.RequestNode().put().apiKey("put").responseModelRefer(ResponseModelB.self).updateCache(true).requestModelFromResultHandler { (result:[String : Any]?) -> Any? in
             if let responseModel = result?[HJRestClientManager.NotificationResponseModel] as? ResponseModelB, let url = responseModel.url {
                 return ["a":url]
             }
             return nil
-        }, responseModelRefer: ResponseModelB.self, updateCache: true, completion: nil)
-//
-//        let reqX = SimpleClientManager.Request(method: .get, apiKey: "post", requestModel: reqm, responseModelRefer: ResponseModelA.self, updateCache: false) { (result:[String : Any]?) -> [String : Any]? in
-//            print("done reqX")
-//            return nil
-//        }
-        
-//        SimpleClientManager.shared.requestConcurrent([reqA, reqB, reqC], callIdentifier: nil) { (result:[String : Any]?) -> [String : Any]? in
-//
-//            guard let result = result, let eventValue = result[HJRestClientManager.NotificationEvent] as? Int, let event = HJRestClientManager.Event(rawValue: eventValue) else {
-//                return nil
-//            }
-//
-//            switch event {
-//            case .doneRequestGroup :
-//                if let results = result[HJRestClientManager.NotificationRequestGroupResults] as? [[String:Any]] {
-//                    for res in results {
-//                        if res[HJRestClientManager.NotificationResponseModel] == nil {
-//                            print("something wrong in request!")
-//                        }
-//                    }
-//                    print("all group req done.")
-//                } else {
-//                    print("something wrong in group!")
-//                }
-//            default :
-//                break
-//            }
-//            return nil
-//        }
-        
-        SimpleClientManager.shared.requestSerial([reqA, reqB, reqC], callIdentifier: nil, stopWhenFailed: true) { (result:[String : Any]?) -> [String : Any]? in
+        }
+
+        let reqL = HJRestClientManager.RequestNode().localRequest(name: "local job") { (result:[String : Any]?) -> Any? in
+            print("local job done.")
+            return result?[HJRestClientManager.NotificationResponseModel]
+        }
+
+        let reqX = HJRestClientManager.RequestNode().get().apiKey("post").requestModel(reqm).responseModelRefer(ResponseModelA.self).completionHandler { (result:[String : Any]?) -> [String : Any]? in
+            print("done reqX")
+            return nil
+        }
+
+        let reqList = [reqA, reqB, reqL, reqC, reqX]
+//        HJRestClientManager.shared.requestConcurrent(reqList, callIdentifier: nil) { (result:[String : Any]?) -> [String : Any]? in
+        HJRestClientManager.shared.requestSerial(reqList, callIdentifier: nil, stopWhenFailed: true) { (result:[String : Any]?) -> [String : Any]? in
 
             guard let result = result, let eventValue = result[HJRestClientManager.NotificationEvent] as? Int, let event = HJRestClientManager.Event(rawValue: eventValue) else {
                 return nil
@@ -218,7 +186,7 @@ class ViewController: UIViewController {
                 if let results = result[HJRestClientManager.NotificationRequestGroupResults] as? [[String:Any]] {
                     for res in results {
                         if res[HJRestClientManager.NotificationResponseModel] == nil {
-                            print("something wrong in request!")
+                            print("request have no response.")
                         }
                     }
                     print("all group req done.")
@@ -230,18 +198,23 @@ class ViewController: UIViewController {
             }
             return nil
         }
-        
-        SimpleClientManager.shared.setObserver(forSharedDataKey: "test")
+
+        HJRestClientManager.shared.setObserver(forSharedDataKey: "test")
 
         DispatchQueue.main.asyncAfter(deadline: .now()+2) {
-            SimpleClientManager.shared.setShared(data: true, forKey: "test")
+            HJRestClientManager.shared.setShared(data: true, forKey: "test")
             DispatchQueue.main.asyncAfter(deadline: .now()+2, execute: {
-                SimpleClientManager.shared.removeSharedData(forKey: "test")
+                HJRestClientManager.shared.removeSharedData(forKey: "test")
             })
+        }
+        
+        HJRestClientManager.request().endpoint("/get").requestModel(["Hello":"World!"]).responseModelRefer(ResponseModelA.self).resume { (result:[String : Any]?) -> [String : Any]? in
+            print("gotta simple")
+            return nil
         }
     }
     
-    @objc func simpleClientManagerNotificationHandler(notification:Notification) {
+    @objc func restClientManagerNotificationHandler(notification:Notification) {
         
         guard let userInfo = notification.userInfo, let eventValue = userInfo[HJRestClientManager.NotificationEvent] as? Int, let event = HJRestClientManager.Event(rawValue: eventValue) else {
             return

@@ -8,9 +8,9 @@
 //  Licensed under the MIT license.
 
 import Foundation
-//#if COCOAPODS
-//import HJHttpApiExecutor
-//#endif
+#if canImport(HJHttpApiExecutor)
+import HJHttpApiExecutor
+#endif
 
 class HJRestClientExecutor: HJHttpApiExecutor {
     
@@ -23,11 +23,13 @@ class HJRestClientExecutor: HJHttpApiExecutor {
         case postContentType
         case customBody
         case customConentType
+        case receivedContentType
         case receivedData
         case callIdentifier
         case updateCache
         case completionBlock
         case responseModelRefer
+        case dogma
     }
     
     var replacePathComponentsForEndpoints:[String:[String:String]] = [:]
@@ -165,6 +167,11 @@ class HJRestClientExecutor: HJHttpApiExecutor {
     
     override func receiveBodyType(fromQuery anQuery:Any?) -> HJHttpApiExecutorReceiveBodyType {
         
+        if let queryObject = anQuery as? HYQuery, let response = queryObject.parameter(forKey: HJAsyncHttpDelivererParameterKeyResponse) as? HTTPURLResponse {
+            if let contentType = response.allHeaderFields["Content-Type"] as? String {
+                queryObject.setParameter(contentType, forKey: HJRestClientExecutor.Parameter.receivedContentType.rawValue)
+            }
+        }
         return .custom
     }
     
@@ -179,8 +186,8 @@ class HJRestClientExecutor: HJHttpApiExecutor {
     
     override func appendResultParameter(toQuery anQuery:Any?, withParsedObject parsedObject:Any?) -> Bool {
         
-        if let anQuery = anQuery as? HYQuery, let parsedObject = parsedObject {
-            anQuery.setParameter(parsedObject, forKey:HJRestClientExecutor.Parameter.receivedData.rawValue)
+        if let queryObject = anQuery as? HYQuery, let parsedObject = parsedObject {
+            queryObject.setParameter(parsedObject, forKey:HJRestClientExecutor.Parameter.receivedData.rawValue)
         }
         
         return true
