@@ -16,6 +16,7 @@
 		025053C32147FA670087243D /* HJRestClientManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025053C12147FA670087243D /* HJRestClientManager.swift */; };
 		276D4E5D227AB60D00A9A2A5 /* HJRestClientDogma.swift in Sources */ = {isa = PBXBuildFile; fileRef = 276D4E5C227AB60D00A9A2A5 /* HJRestClientDogma.swift */; };
 		276D4E5F228139C000A9A2A5 /* SampleDogma.swift in Sources */ = {isa = PBXBuildFile; fileRef = 276D4E5E228139C000A9A2A5 /* SampleDogma.swift */; };
+		279503C7235EE0ED004CE5DD /* dummy0.json in Resources */ = {isa = PBXBuildFile; fileRef = 279503C5235EE0ED004CE5DD /* dummy0.json */; };
 		27B585B621FFDAC600D75AA9 /* ResponseModelA.m in Sources */ = {isa = PBXBuildFile; fileRef = 27B585B521FFDAC600D75AA9 /* ResponseModelA.m */; };
 		27B585B921FFFE0400D75AA9 /* RequestModelA.m in Sources */ = {isa = PBXBuildFile; fileRef = 27B585B821FFFE0400D75AA9 /* RequestModelA.m */; };
 		27B585BB22003D0B00D75AA9 /* ResponseModelB.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27B585BA22003D0B00D75AA9 /* ResponseModelB.swift */; };
@@ -36,6 +37,7 @@
 		025053C42147FAC40087243D /* SimpleClient-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "SimpleClient-Bridging-Header.h"; sourceTree = "<group>"; };
 		276D4E5C227AB60D00A9A2A5 /* HJRestClientDogma.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HJRestClientDogma.swift; path = ../../../Sources/HJRestClientDogma.swift; sourceTree = "<group>"; };
 		276D4E5E228139C000A9A2A5 /* SampleDogma.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SampleDogma.swift; sourceTree = "<group>"; };
+		279503C5235EE0ED004CE5DD /* dummy0.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = dummy0.json; sourceTree = "<group>"; };
 		27B585B421FFDAC600D75AA9 /* ResponseModelA.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ResponseModelA.h; sourceTree = "<group>"; };
 		27B585B521FFDAC600D75AA9 /* ResponseModelA.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ResponseModelA.m; sourceTree = "<group>"; };
 		27B585B721FFFE0400D75AA9 /* RequestModelA.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RequestModelA.h; sourceTree = "<group>"; };
@@ -95,6 +97,7 @@
 				27B585B821FFFE0400D75AA9 /* RequestModelA.m */,
 				27B585BA22003D0B00D75AA9 /* ResponseModelB.swift */,
 				27B585BC2201167400D75AA9 /* RequestModelB.swift */,
+				279503C5235EE0ED004CE5DD /* dummy0.json */,
 			);
 			path = SimpleClient;
 			sourceTree = "<group>";
@@ -189,6 +192,7 @@
 				022662A02147F6CA00183C67 /* LaunchScreen.storyboard in Resources */,
 				0226629D2147F6CA00183C67 /* Assets.xcassets in Resources */,
 				0226629B2147F6C600183C67 /* Main.storyboard in Resources */,
+				279503C7235EE0ED004CE5DD /* dummy0.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -25,6 +25,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         let scmRepoPath = "\(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])/hjRestClientManager"
         if HJRestClientManager.shared.standby(withRepositoryPath: scmRepoPath, workerName: HydraCommonWorkerName) == true {
+            HJRestClientManager.shared.useDummyResponse = true
             HJRestClientManager.shared.bind(toHydra: Hydra.default())
         }
         Hydra.default().startAllWorkers()

@@ -52,6 +52,11 @@ class ViewController: UIViewController {
         HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/get", forKey: "get")
         HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/put", forKey: "put")
         
+        HJRestClientManager.shared.setDummyResponseHanlder({ (extraHeaders:[String : Any]?, requestModel:Any?) -> Data? in
+            let data = try? Data(contentsOf: Bundle.main.url(forResource: "dummy0", withExtension: "json")!)
+            return data
+        }, forServerAddress: "postman-echo.com", endpoint: "get", method: .get, responseDelayTime: 1.2)
+        
         method = .get
     }
     
@@ -139,11 +144,15 @@ class ViewController: UIViewController {
 //        }
         
         let reqA = HJRestClientManager.RequestNode().get().apiKey("get").requestModel(reqm).responseModelRefer(ResponseModelA.self).completionHandler { (result:[String : Any]?) -> [String : Any]? in
-            print("done reqA")
+            print("reqA responsed")
+            if let responseModel = result?[HJRestClientManager.NotificationResponseModel] as? ResponseModelA, let url = responseModel.url {
+                print("reqA response url \(url)")
+            }
             return nil
         }
 
         let reqB = HJRestClientManager.RequestNode().post().apiKey("post").responseModelRefer(ResponseModelB.self).requestModelFromResultHandler { (result:[String : Any]?) -> Any? in
+            print("reqB responsed")
             if let responseModel = result?[HJRestClientManager.NotificationResponseModel] as? ResponseModelA, let url = responseModel.url {
                 let reqm = RequestModelA()
                 reqm.a = url
@@ -153,6 +162,7 @@ class ViewController: UIViewController {
         }
 
         let reqC = HJRestClientManager.RequestNode().put().apiKey("put").responseModelRefer(ResponseModelB.self).updateCache(true).requestModelFromResultHandler { (result:[String : Any]?) -> Any? in
+            print("reqC responsed")
             if let responseModel = result?[HJRestClientManager.NotificationResponseModel] as? ResponseModelB, let url = responseModel.url {
                 return ["a":url]
             }
@@ -160,16 +170,16 @@ class ViewController: UIViewController {
         }
 
         let reqL = HJRestClientManager.RequestNode().localRequest(name: "local job") { (result:[String : Any]?) -> Any? in
-            print("local job done.")
+            print("reqL responsed")
             return result?[HJRestClientManager.NotificationResponseModel]
         }
 
         let reqX = HJRestClientManager.RequestNode().get().apiKey("post").requestModel(reqm).responseModelRefer(ResponseModelA.self).completionHandler { (result:[String : Any]?) -> [String : Any]? in
-            print("done reqX")
+            print("reqX responsed")
             return nil
         }
 
-        let reqList = [reqA, reqB, reqL, reqC, reqX]
+        let reqList = [reqB, reqA, reqL, reqC, reqX]
 //        HJRestClientManager.shared.requestConcurrent(reqList, callIdentifier: nil) { (result:[String : Any]?) -> [String : Any]? in
         HJRestClientManager.shared.requestSerial(reqList, callIdentifier: nil, stopWhenFailed: true) { (result:[String : Any]?) -> [String : Any]? in
 
@@ -210,6 +220,13 @@ class ViewController: UIViewController {
         
         HJRestClientManager.request().endpoint("/get").requestModel(["Hello":"World!"]).responseModelRefer(ResponseModelA.self).resume { (result:[String : Any]?) -> [String : Any]? in
             print("gotta simple")
+            return nil
+        }
+        
+        HJRestClientManager.request().endpoint("/get").requestModel(["HI":"HO"]).responseModelRefer(ResponseModelA.self).resume { (result:[String : Any]?) -> [String : Any]? in
+            if let responseModel = result?[HJRestClientManager.NotificationResponseModel] as? ResponseModelA, let url = responseModel.url {
+                print("dummy response url \(url)")
+            }
             return nil
         }
     }

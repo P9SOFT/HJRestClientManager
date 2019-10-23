@@ -1,0 +1,20 @@
+{
+  "args": {
+    "foo1": "bar1",
+    "foo2": "bar2"
+  },
+  "headers": {
+    "x-forwarded-proto": "https",
+    "host": "postman-echo.com",
+    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3",
+    "accept-encoding": "gzip, deflate, br",
+    "accept-language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    "cookie": "_ga=GA1.2.692413278.1571037985; sails.sid=s%3AAHF-Lis0JPx4Rk1tr5I2sa7frOjaosco.wpBs51O3akIfbhCMuQ4mnpkADKoZNW9qNIf4gxfOtj0; _gid=GA1.2.2083212047.1571727540; _gat_UA-43979731-4=1",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "none",
+    "upgrade-insecure-requests": "1",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36",
+    "x-forwarded-port": "443"
+  },
+  "url": "https://www.apple.com"
+}
