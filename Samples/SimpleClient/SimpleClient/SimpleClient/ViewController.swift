@@ -52,6 +52,8 @@ class ViewController: UIViewController {
         HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/get", forKey: "get")
         HJRestClientManager.shared.setApiWith(serverKey: "postmanecho", endpoint: "/put", forKey: "put")
         
+        HJRestClientManager.shared.setReplaceComponents(["$0":""], forEndpoint: "/P9SOFT/$0")
+        
         HJRestClientManager.shared.setDummyResponseHanlder({ (extraHeaders:[String : Any]?, requestModel:Any?) -> Data? in
             let data = try? Data(contentsOf: Bundle.main.url(forResource: "dummy0", withExtension: "json")!)
             return data
@@ -226,6 +228,14 @@ class ViewController: UIViewController {
         HJRestClientManager.request().endpoint("/get").requestModel(["HI":"HO"]).responseModelRefer(ResponseModelA.self).resume { (result:[String : Any]?) -> [String : Any]? in
             if let responseModel = result?[HJRestClientManager.NotificationResponseModel] as? ResponseModelA, let url = responseModel.url {
                 print("dummy response url \(url)")
+            }
+            return nil
+        }
+        
+        HJRestClientManager.request().serverAddress("https://github.com").endpoint("/P9SOFT/$0").requestModel(["$0":"HJRestClientManager"]).resume { (result:[String : Any]?) -> [String : Any]? in
+            if let responseModel = result?[HJRestClientManager.NotificationResponseModel] as? Data {
+                let s = String.init(data: responseModel, encoding: .utf8) ?? ""
+                print("response string is \(s)")
             }
             return nil
         }

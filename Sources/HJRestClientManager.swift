@@ -427,10 +427,10 @@ open class HJRestClientManager : HYManager {
         if let apiKey = req.apiKey {
             return request(method: req.method, apiKey: apiKey, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
-        if let serverKey = req.serverKey ?? defaultServerKey, let serverAddress = servers[serverKey] {
+        if let serverAddress = req.serverAddress {
             return request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
-        if let serverAddress = req.serverAddress {
+        if let serverKey = req.serverKey ?? defaultServerKey, let serverAddress = servers[serverKey] {
             return request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
         return false
