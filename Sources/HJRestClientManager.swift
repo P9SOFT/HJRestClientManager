@@ -38,6 +38,12 @@ public typealias HJRestClientResponseModelFromDataBlock = (_ data:Data, _ server
 public typealias HJRestClientResponseDataFromModelBlock = (_ model:Any, _ serverAddress:String, _ endpoint:String?, _ requestModel:Any?) -> Data?
 public typealias HJRestClientDidReceiveResponseBlock = (_ urlResponse:URLResponse) -> Void
 
+public typealias HJRestClientDummyResponseHandlerBlock = (_ extraHeaders:[String:Any]?, _ requestModel:Any?) -> Data?
+
+/*!
+ @class HJRestClientManager
+ @abstract Helper module to handling REST API.
+ */
 open class HJRestClientManager : HYManager {
     
     fileprivate enum InterestedHttpStatus:Int {
@@ -281,12 +287,14 @@ open class HJRestClientManager : HYManager {
     fileprivate var apis:[String:(serverKey:String, endpoint:String)] = [:]
     fileprivate var apiKeyForServerAddressEndpointCache:[String:String] = [:]
     fileprivate var requestingGroups:[String:RequestGroup] = [:]
+    fileprivate var dummyResponseHandlers:[String:(handler:HJRestClientDummyResponseHandlerBlock, responseDelayTime:TimeInterval)] = [:]
     
     @objc public static let shared = HJRestClientManager()
     @objc public var defaultServerKey:String?
     @objc public var defaultDogmaKey:String?
     @objc public var defaultDogma:HJRestClientDogma = HJRestClientDefaultDogma()
     @objc public var useEtag:Bool = true
+    @objc public var useDummyResponse:Bool = false
     
     @objc public var timeoutInterval:TimeInterval {
         get {
@@ -331,6 +339,33 @@ open class HJRestClientManager : HYManager {
         }
         let dogma = dogmaForGivenKeyOrDefault(key: dogmaKey)
         let resourceKey = cacheKey(forMethod: method, serverAddress: serverAddress, endpoint: endpoint, requestModel: requestModel, dogma: dogma)
+        
+        if useDummyResponse == true, let handlerNode = dummyResponseHandlers[self.dummyResponseKeyFor(serverAddress: serverAddress, endpoint: endpoint, method: method)] {
+            DispatchQueue.global(qos: .background).async {
+                var resultDict:[String:Any] = [:]
+                resultDict[HJRestClientManager.NotificationDogma] = dogmaKey
+                resultDict[HJRestClientManager.NotificationServerAddress] = serverAddress
+                resultDict[HJRestClientManager.NotificationEndpoint] = endpoint
+                resultDict[HJRestClientManager.NotificationRequestModel] = requestModel
+                resultDict[HJRestClientManager.NotificationCallIdentifier] = callIdentifier
+                if let data = handlerNode.handler(extraHeaders, requestModel), let model = dogma.responseModel(fromData: data, serverAddress: serverAddress, endpoint: endpoint, contentType: nil, requestModel: requestModel, responseModelRefer: responseModelRefer) {
+                    resultDict[HJRestClientManager.NotificationEvent] = Event.loadRemote.rawValue
+                    resultDict[HJRestClientManager.NotificationResponseModel] = model
+                } else {
+                    resultDict[HJRestClientManager.NotificationEvent] = Event.failNetworkError.rawValue
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now()+handlerNode.responseDelayTime) {
+                    if let completion = completion {
+                        _ = completion(resultDict)
+                    }
+                    self.postNotify(withParamDict: resultDict)
+                    if let groupIdentifier = groupIdentifier, let requestIdentifier = requestIdentifier {
+                        self.popNextOf(groupIdentifier: groupIdentifier, doneRequestIdentifier: requestIdentifier, doneRequestResult: resultDict)
+                    }
+                }
+            }
+            return true
+        }
         
         if let info = maxAgeAndLastUpdatedTimestamp(forResourcekey: resourceKey), (Date().timeIntervalSinceReferenceDate - info.lastUpdatedTimestamp) <= info.maxAge {
             var resultDict:[String:Any] = [:]
@@ -392,10 +427,10 @@ open class HJRestClientManager : HYManager {
         if let apiKey = req.apiKey {
             return request(method: req.method, apiKey: apiKey, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
-        if let serverKey = req.serverKey ?? defaultServerKey, let serverAddress = servers[serverKey] {
+        if let serverAddress = req.serverAddress {
             return request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
-        if let serverAddress = req.serverAddress {
+        if let serverKey = req.serverKey ?? defaultServerKey, let serverAddress = servers[serverKey] {
             return request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
         return false
@@ -893,6 +928,26 @@ extension HJRestClientManager {
             processRequest(req: req, group: group, doneRequestResult: doneRequestResult)
         }
     }
+    
+    fileprivate func dummyResponseKeyFor(serverAddress:String, endpoint:String?, method:HJHttpApiExecutorHttpMethodType) -> String {
+        
+        let domainString = (serverAddress.hasPrefix("http://") || serverAddress.hasPrefix("https://")) ? serverAddress : "http://\(serverAddress)"
+        var key = "\(method.rawValue) \(domainString)"
+        if let endpointString = endpoint, endpointString.count > 0, let last = key.last {
+            var postfix = endpointString
+            if last == "/" {
+                if endpointString.hasPrefix("/") == true {
+                    postfix = String(endpointString.dropFirst())
+                }
+            } else {
+                if endpointString.hasPrefix("/") == false {
+                    postfix = "/\(endpointString)"
+                }
+            }
+            key += postfix
+        }
+        return key
+    }
 }
 
 extension HJRestClientManager {
@@ -1295,5 +1350,10 @@ extension HJRestClientManager {
         DispatchQueue.main.async(execute: { () -> Void in
             self.postNotify(withParamDict: resultDict)
         })
+    }
+    
+    @objc public func setDummyResponseHanlder(_ handler:@escaping HJRestClientDummyResponseHandlerBlock, forServerAddress serverAddress:String, endpoint:String?, method:HJHttpApiExecutorHttpMethodType, responseDelayTime:TimeInterval) {
+        
+        dummyResponseHandlers[self.dummyResponseKeyFor(serverAddress: serverAddress, endpoint: endpoint, method: method)] = (handler, responseDelayTime)
     }
 }

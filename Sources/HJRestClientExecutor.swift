@@ -71,7 +71,7 @@ class HJRestClientExecutor: HJHttpApiExecutor {
                     if let replaceValue = parameters[key] as? String {
                         apiUrlString = apiUrlString.replacingOccurrences(of: key, with: replaceValue)
                     } else {
-                        apiUrlString = apiUrlString.replacingOccurrences(of: "/\(key)", with:"")
+                        apiUrlString = apiUrlString.replacingOccurrences(of: "/\(key)", with:value)
                     }
                 }
             }
