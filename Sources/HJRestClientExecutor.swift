@@ -35,6 +35,7 @@ class HJRestClientExecutor: HJHttpApiExecutor {
     var replacePathComponentsForEndpoints:[String:[String:String]] = [:]
     var autoSettingHeaders:[String:String] = [:]
     var timeoutInterval:TimeInterval = 8
+    var limiterCount:Int = 0
     
     override func name() -> String? {
         
@@ -44,6 +45,16 @@ class HJRestClientExecutor: HJHttpApiExecutor {
     override func timeoutInterval(fromQuery anQuery: Any?) -> TimeInterval {
         
         return timeoutInterval
+    }
+    
+    override func activeLimiterName() -> String? {
+        
+        return self.name()
+    }
+    
+    override func activeLimiterCount() -> Int {
+        
+        return limiterCount
     }
     
     override func apiUrl(fromQuery anQuery:Any?) -> String? {

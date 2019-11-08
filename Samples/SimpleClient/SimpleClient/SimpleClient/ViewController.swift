@@ -54,10 +54,17 @@ class ViewController: UIViewController {
         
         HJRestClientManager.shared.setReplaceComponents(["$0":""], forEndpoint: "/P9SOFT/$0")
         
-        HJRestClientManager.shared.setDummyResponseHanlder({ (extraHeaders:[String : Any]?, requestModel:Any?) -> Data? in
+        HJRestClientManager.shared.setDummyResponseHanlder({ (extraHeaders:[String : Any]?, requestModel:Any?) -> HJRestClientManager.ResponseNode? in
             let data = try? Data(contentsOf: Bundle.main.url(forResource: "dummy0", withExtension: "json")!)
-            return data
+            return HJRestClientManager.ResponseNode(httpCode: 200, allHeaderFields: [:], body: data)
         }, forServerAddress: "postman-echo.com", endpoint: "get", method: .get, responseDelayTime: 1.2)
+        
+ //       HJRestClientManager.shared.connectionPoolSize = 1
+        
+        HJResourceManager.default().setCipher(HJResourceCipherGzip(), forName: "gz")
+        
+        HJRestClientManager.shared.setCipher(name: "gz", forSharedDataKey: "test")
+        HJRestClientManager.shared.setObserver(forSharedDataKey: "test")
         
         method = .get
     }
@@ -114,7 +121,7 @@ class ViewController: UIViewController {
 //            }
 //
 //            switch event {
-//            case .loadRemote, .loadCache :
+//            case .loadRemote :
 //                var text:String = ""
 //                if let httpStatus = result[HJRestClientManager.NotificationHttpStatus] as? Int {
 //                    text = "HTTP STATUS \(httpStatus)"
@@ -144,6 +151,8 @@ class ViewController: UIViewController {
 //
 //            return nil
 //        }
+        
+        let reqZ = HJRestClientManager.RequestNode().get().apiKey("get").requestModel(["req":"z"]).responseModelRefer(ResponseModelA.self)
         
         let reqA = HJRestClientManager.RequestNode().get().apiKey("get").requestModel(reqm).responseModelRefer(ResponseModelA.self).completionHandler { (result:[String : Any]?) -> [String : Any]? in
             print("reqA responsed")
@@ -181,9 +190,9 @@ class ViewController: UIViewController {
             return nil
         }
 
-        let reqList = [reqB, reqA, reqL, reqC, reqX]
-//        HJRestClientManager.shared.requestConcurrent(reqList, callIdentifier: nil) { (result:[String : Any]?) -> [String : Any]? in
-        HJRestClientManager.shared.requestSerial(reqList, callIdentifier: nil, stopWhenFailed: true) { (result:[String : Any]?) -> [String : Any]? in
+        let reqList = [reqZ, reqB, reqA, reqL, reqC, reqX]
+        HJRestClientManager.shared.requestConcurrent(reqList, callIdentifier: nil) { (result:[String : Any]?) -> [String : Any]? in
+//        HJRestClientManager.shared.requestSerial(reqList, callIdentifier: nil, stopWhenFailed: true) { (result:[String : Any]?) -> [String : Any]? in
 
             guard let result = result, let eventValue = result[HJRestClientManager.NotificationEvent] as? Int, let event = HJRestClientManager.Event(rawValue: eventValue) else {
                 return nil
@@ -211,10 +220,8 @@ class ViewController: UIViewController {
             return nil
         }
 
-        HJRestClientManager.shared.setObserver(forSharedDataKey: "test")
-
         DispatchQueue.main.asyncAfter(deadline: .now()+2) {
-            HJRestClientManager.shared.setShared(data: true, forKey: "test")
+            HJRestClientManager.shared.setShared(data: "hello, world!", forKey: "test")
             DispatchQueue.main.asyncAfter(deadline: .now()+2, execute: {
                 HJRestClientManager.shared.removeSharedData(forKey: "test")
             })
@@ -248,6 +255,18 @@ class ViewController: UIViewController {
         }
         
         print("gotta \(event.rawValue)")
+        
+        switch event {
+        case .updateSharedData :
+            if let key = userInfo[HJRestClientManager.NotificationSharedDataKey] as? String, let s = userInfo[HJRestClientManager.NotificationSharedDataModel] as? String {
+                print("shared data key \(key) updated : \(s)")
+            }
+        case .removeSharedData :
+            if let key = userInfo[HJRestClientManager.NotificationSharedDataKey] as? String {
+                print("shared data key \(key) removed")
+            }
+        default :
+            break
+        }
     }
 }
-

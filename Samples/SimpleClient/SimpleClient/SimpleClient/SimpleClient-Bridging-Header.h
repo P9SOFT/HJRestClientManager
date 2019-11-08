@@ -5,6 +5,7 @@
 #import <Hydra/Hydra.h>
 #import <HJHttpApiExecutor/HJHttpApiExecutor.h>
 #import <HJResourceManager/HJResourceManager.h>
+#import <HJResourceManager/HJResourceCipherGzip.h>
 
 #import <JSONModel/JSONModel.h>
 
