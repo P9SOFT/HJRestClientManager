@@ -17,14 +17,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         
-        Hydra.default().addCommonWorker()
+        //Hydra.default().addCommonWorker()
+        Hydra.default().addNormalWorker(forName: "hjrm")
+        Hydra.default().addNormalWorker(forName: "hjrc")
         
-        let hjrmRepoPath = "\(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])/resourceManager"
-        if HJResourceManager.default().standby(withRepositoryPath: hjrmRepoPath, localJobWorkerName: HydraCommonWorkerName, remoteJobWorkerName: HydraCommonWorkerName) {
+        let hjrmRepoPath = "\(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])/hjrm"
+        if HJResourceManager.default().standby(withRepositoryPath: hjrmRepoPath, localJobWorkerName: "hjrm", remoteJobWorkerName: "hjrm") {
             HJResourceManager.default().bind(toHydra: Hydra.default())
         }
-        let scmRepoPath = "\(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])/hjRestClientManager"
-        if HJRestClientManager.shared.standby(withRepositoryPath: scmRepoPath, workerName: HydraCommonWorkerName) == true {
+        let hjrcRepoPath = "\(NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0])/hjrc"
+        if HJRestClientManager.shared.standby(withRepositoryPath: hjrcRepoPath, workerName: "hjrc") == true {
             HJRestClientManager.shared.useDummyResponse = true
             HJRestClientManager.shared.bind(toHydra: Hydra.default())
         }

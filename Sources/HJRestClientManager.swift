@@ -38,7 +38,7 @@ public typealias HJRestClientResponseModelFromDataBlock = (_ data:Data, _ server
 public typealias HJRestClientResponseDataFromModelBlock = (_ model:Any, _ serverAddress:String, _ endpoint:String?, _ requestModel:Any?) -> Data?
 public typealias HJRestClientDidReceiveResponseBlock = (_ urlResponse:URLResponse) -> Void
 
-public typealias HJRestClientDummyResponseHandlerBlock = (_ extraHeaders:[String:Any]?, _ requestModel:Any?) -> Data?
+public typealias HJRestClientDummyResponseHandlerBlock = (_ extraHeaders:[String:Any]?, _ requestModel:Any?) -> HJRestClientManager.ResponseNode?
 
 /*!
  @class HJRestClientManager
@@ -81,7 +81,6 @@ open class HJRestClientManager : HYManager {
     
     @objc(HJRestClientManagerEvent) public enum Event: Int {
         case loadRemote
-        case loadCache
         case loadSkip
         case updateCache
         case updateSharedData
@@ -101,7 +100,6 @@ open class HJRestClientManager : HYManager {
         fileprivate var resultDict:[String:Any]?
         fileprivate var isLocalRequest:Bool = false
         fileprivate var localRequestName:String = ""
-        
         fileprivate var dogmaKey:String?
         fileprivate var method:HJHttpApiExecutorHttpMethodType = .get
         fileprivate var serverAddress:String?
@@ -111,7 +109,7 @@ open class HJRestClientManager : HYManager {
         fileprivate var extraHeaders:[String:Any]?
         fileprivate var requestModel:Any?
         fileprivate var responseModelRefer:Any?
-        fileprivate var updateCache:Bool = false
+        fileprivate var updateCache:Bool?
         fileprivate var requestModelFromResultHandler:HJRestClientRequestModelFromResultBlock?
         fileprivate var completionHandler:HJRestClientCompletionBlock?
         
@@ -271,6 +269,19 @@ open class HJRestClientManager : HYManager {
         }
     }
     
+    @objc(HJRestClientResponse) public class ResponseNode : NSObject {
+        
+        fileprivate var httpCode:Int = 200
+        fileprivate var allHeaderFields:[AnyHashable:Any]?
+        fileprivate var body:Data?
+        
+        @objc public init(httpCode:Int, allHeaderFields:[AnyHashable:Any]?, body:Data?) {
+            self.httpCode = httpCode
+            self.allHeaderFields = allHeaderFields
+            self.body = body
+        }
+    }
+    
     fileprivate let apiExecutor:HJRestClientExecutor = HJRestClientExecutor()
     fileprivate let sharedDataDirectoryName = "shared"
     fileprivate var standby:Bool = false
@@ -295,6 +306,7 @@ open class HJRestClientManager : HYManager {
     @objc public var defaultDogma:HJRestClientDogma = HJRestClientDefaultDogma()
     @objc public var useEtag:Bool = true
     @objc public var useDummyResponse:Bool = false
+    @objc public var useUpdateCacheDefault:Bool = false
     
     @objc public var timeoutInterval:TimeInterval {
         get {
@@ -302,6 +314,15 @@ open class HJRestClientManager : HYManager {
         }
         set {
             apiExecutor.timeoutInterval = newValue
+        }
+    }
+    
+    @objc public var connectionPoolSize:Int {
+        get {
+            return apiExecutor.activeLimiterCount()
+        }
+        set {
+            apiExecutor.limiterCount = newValue
         }
     }
     
@@ -348,10 +369,16 @@ open class HJRestClientManager : HYManager {
                 resultDict[HJRestClientManager.NotificationEndpoint] = endpoint
                 resultDict[HJRestClientManager.NotificationRequestModel] = requestModel
                 resultDict[HJRestClientManager.NotificationCallIdentifier] = callIdentifier
-                if let data = handlerNode.handler(extraHeaders, requestModel), let model = dogma.responseModel(fromData: data, serverAddress: serverAddress, endpoint: endpoint, contentType: nil, requestModel: requestModel, responseModelRefer: responseModelRefer) {
+                if let data = handlerNode.handler(extraHeaders, requestModel) {
+                    resultDict[HJRestClientManager.NotificationHttpStatus] = data.httpCode
+                    resultDict[HJRestClientManager.NotificationHttpHeaders] = data.allHeaderFields
                     resultDict[HJRestClientManager.NotificationEvent] = Event.loadRemote.rawValue
-                    resultDict[HJRestClientManager.NotificationResponseModel] = model
+                    if let body = data.body, let model = dogma.responseModel(fromData: body, serverAddress: serverAddress, endpoint: endpoint, contentType: nil, requestModel: requestModel, responseModelRefer: responseModelRefer) {
+                        resultDict[HJRestClientManager.NotificationResponseModel] = model
+                    }
                 } else {
+                    resultDict[HJRestClientManager.NotificationHttpStatus] = 404
+                    resultDict[HJRestClientManager.NotificationHttpHeaders] = [:]
                     resultDict[HJRestClientManager.NotificationEvent] = Event.failNetworkError.rawValue
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now()+handlerNode.responseDelayTime) {
@@ -375,6 +402,7 @@ open class HJRestClientManager : HYManager {
             resultDict[HJRestClientManager.NotificationEndpoint] = endpoint
             resultDict[HJRestClientManager.NotificationRequestModel] = requestModel
             resultDict[HJRestClientManager.NotificationCallIdentifier] = callIdentifier
+            resultDict[HJRestClientManager.NotificationHttpStatus] = InterestedHttpStatus.notModified
             DispatchQueue.main.async(execute: {
                 if let completion = completion {
                     _ = completion(resultDict)
@@ -425,13 +453,13 @@ open class HJRestClientManager : HYManager {
     @objc @discardableResult public func request(_ req:RequestNode, completion:HJRestClientCompletionBlock?) -> Bool {
         
         if let apiKey = req.apiKey {
-            return request(method: req.method, apiKey: apiKey, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
+            return request(method: req.method, apiKey: apiKey, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache ?? useUpdateCacheDefault, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
         if let serverAddress = req.serverAddress {
-            return request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
+            return request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache ?? useUpdateCacheDefault, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
         if let serverKey = req.serverKey ?? defaultServerKey, let serverAddress = servers[serverKey] {
-            return request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
+            return request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: nil, updateCache: req.updateCache ?? useUpdateCacheDefault, groupIdentifier: nil, requestIdentifier: nil, completion: completion ?? req.completionHandler)
         }
         return false
     }
@@ -469,15 +497,15 @@ open class HJRestClientManager : HYManager {
         if req.isLocalRequest == false {
             if let apiKey = req.apiKey {
                 if let reqHandler = req.requestModelFromResultHandler {
-                    request(method: req.method, apiKey: apiKey, extraHeaders: req.extraHeaders, requestModel: reqHandler(doneRequestResult), responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completionHandler)
+                    request(method: req.method, apiKey: apiKey, extraHeaders: req.extraHeaders, requestModel: reqHandler(doneRequestResult), responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: group.callIdentifier, updateCache: req.updateCache ?? useUpdateCacheDefault, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completionHandler)
                 } else {
-                    request(method: req.method, apiKey: apiKey, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completionHandler)
+                    request(method: req.method, apiKey: apiKey, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: group.callIdentifier, updateCache: req.updateCache ?? useUpdateCacheDefault, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completionHandler)
                 }
             } else if let serverAddress = req.serverAddress {
                 if let reqHandler = req.requestModelFromResultHandler {
-                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: reqHandler(doneRequestResult), responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completionHandler)
+                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: reqHandler(doneRequestResult), responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: group.callIdentifier, updateCache: req.updateCache ?? useUpdateCacheDefault, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completionHandler)
                 } else {
-                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: group.callIdentifier, updateCache: req.updateCache, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completionHandler)
+                    request(method: req.method, serverAddress: serverAddress, endpoint: req.endpoint, extraHeaders: req.extraHeaders, requestModel: req.requestModel, responseModelRefer: req.responseModelRefer, dogmaKey: req.dogmaKey, callIdentifier: group.callIdentifier, updateCache: req.updateCache ?? useUpdateCacheDefault, groupIdentifier: group.identifier, requestIdentifier: req.identifier, completion: req.completionHandler)
                 }
             }
         } else {
@@ -489,6 +517,8 @@ open class HJRestClientManager : HYManager {
                 var resultDict:[String:Any] = [:]
                 resultDict[HJRestClientManager.NotificationEvent] = Event.custom.rawValue
                 resultDict[HJRestClientManager.NotificationCustomEventIdentifier] = req.localRequestName
+                resultDict[HJRestClientManager.NotificationGruopIdentifier] = group.identifier
+                resultDict[HJRestClientManager.NotificationCallIdentifier] = group.callIdentifier
                 if let responseModel = responseModel {
                     resultDict[HJRestClientManager.NotificationResponseModel] = responseModel
                 }
@@ -560,6 +590,15 @@ open class HJRestClientManager : HYManager {
         return nil
     }
     
+    @objc public func cachedResponseModel(method:HJHttpApiExecutorHttpMethodType, endpoint:String, requestModel:Any?, responseModelRefer:Any?, dogmaKey:String?, expireTimeInterval:TimeInterval) -> Any? {
+    
+        guard let serverKey = defaultServerKey, let serverAddress = servers[serverKey] else {
+            return nil
+        }
+        
+        return cachedResponseModel(method: method, serverAddress: serverAddress, endpoint: endpoint, requestModel: requestModel, responseModelRefer: responseModelRefer, dogmaKey: dogmaKey, expireTimeInterval: expireTimeInterval)
+    }
+    
     @objc public func cachedResponseModel(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, responseModelRefer:Any?, dogmaKey:String?, expireTimeInterval:TimeInterval) -> Any? {
         
         guard let info = serverAddressAndEndpoint(forApiKey: apiKey) else {
@@ -584,6 +623,7 @@ open class HJRestClientManager : HYManager {
         HJResourceManager.default().updateCachedResource(forQuery: resourceQuery) { (resultDict:[AnyHashable : Any]?) in
             var resultDict:[String:Any] = resultDict as? [String:Any] ?? [:]
             resultDict[HJRestClientManager.NotificationEvent] = Event.updateCache.rawValue
+            resultDict[HJRestClientManager.NotificationDogma] = dogmaKey
             resultDict[HJRestClientManager.NotificationServerAddress] = serverAddress
             resultDict[HJRestClientManager.NotificationEndpoint] = endpoint
             resultDict[HJRestClientManager.NotificationRequestModel] = requestModel
@@ -592,6 +632,15 @@ open class HJRestClientManager : HYManager {
         }
         
         return true
+    }
+    
+    @objc @discardableResult public func updateCachedResponseModel(_ responseModel:Any, forMethod method:HJHttpApiExecutorHttpMethodType, endpoint:String, requestModel:Any?, dogmaKey:String?) -> Bool {
+        
+        guard let serverKey = defaultServerKey, let serverAddress = servers[serverKey] else {
+            return false
+        }
+        
+        return updateCachedResponseModel(responseModel, forMethod: method, serverAddress: serverAddress, endpoint: endpoint, requestModel: requestModel, dogmaKey: dogmaKey)
     }
     
     @objc @discardableResult public func updateCachedResponseModel(_ responseModel:Any, forMethod method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, dogmaKey:String?) -> Bool {
@@ -618,11 +667,21 @@ open class HJRestClientManager : HYManager {
         HJResourceManager.default().removeResource(forQuery: resourceQuery) { (resultDict:[AnyHashable : Any]?) in
             var resultDict:[String:Any] = resultDict as? [String:Any] ?? [:]
             resultDict[HJRestClientManager.NotificationEvent] = Event.removeCache.rawValue
+            resultDict[HJRestClientManager.NotificationDogma] = dogmaKey
             resultDict[HJRestClientManager.NotificationServerAddress] = serverAddress
             resultDict[HJRestClientManager.NotificationEndpoint] = endpoint
             resultDict[HJRestClientManager.NotificationRequestModel] = requestModel
             self.postNotify(withParamDict: resultDict)
         }
+    }
+    
+    @objc public func clearCache(method:HJHttpApiExecutorHttpMethodType, endpoint:String, requestModel:Any?, dogmaKey:String?) {
+        
+        guard let serverKey = defaultServerKey, let serverAddress = servers[serverKey] else {
+            return
+        }
+        
+        clearCache(method: method, serverAddress: serverAddress, endpoint: endpoint, requestModel: requestModel, dogmaKey: dogmaKey)
     }
     
     @objc public func clearCache(method:HJHttpApiExecutorHttpMethodType, apiKey:String, requestModel:Any?, dogmaKey:String?) {
@@ -655,26 +714,23 @@ open class HJRestClientManager : HYManager {
         let groupIdentifier = result.parameter(forKey: HJRestClientManager.NotificationGruopIdentifier) as? String
         let requestIdentifier = result.parameter(forKey: HJRestClientManager.NotificationRequestIdentifier) as? String
         let dogma = dogmaForGivenKeyOrDefault(key: dogmaKey)
+        
         var resultDict:[String:Any] = [:]
+        resultDict[HJRestClientManager.NotificationDogma] = dogmaKey
+        resultDict[HJRestClientManager.NotificationServerAddress] = serverAddress
+        resultDict[HJRestClientManager.NotificationEndpoint] = endpoint
+        resultDict[HJRestClientManager.NotificationRequestModel] = requestModel
+        resultDict[HJRestClientManager.NotificationGruopIdentifier] = groupIdentifier
+        resultDict[HJRestClientManager.NotificationCallIdentifier] = callIdentifier
+        resultDict[HJRestClientManager.NotificationHttpStatus] = urlResponse?.statusCode
+        resultDict[HJRestClientManager.NotificationHttpHeaders] = urlResponse?.allHeaderFields
         
         switch status {
             case .requested :
                 break
             case .canceled, .expired, .invalidParameter, .internalError, .networkError, .failedResponse, .dataParsingError :
-                resultDict[HJRestClientManager.NotificationServerAddress] = serverAddress
-                resultDict[HJRestClientManager.NotificationEndpoint] = endpoint
-                resultDict[HJRestClientManager.NotificationRequestModel] = requestModel
-                resultDict[HJRestClientManager.NotificationCallIdentifier] = callIdentifier
-                resultDict[HJRestClientManager.NotificationHttpStatus] = urlResponse?.statusCode
-                resultDict[HJRestClientManager.NotificationHttpHeaders] = urlResponse?.allHeaderFields
                 resultDict[HJRestClientManager.NotificationEvent] = (status == .networkError) ? Event.failNetworkError.rawValue : Event.failInternalError.rawValue
             case .emptyData, .received :
-                resultDict[HJRestClientManager.NotificationServerAddress] = serverAddress
-                resultDict[HJRestClientManager.NotificationEndpoint] = endpoint
-                resultDict[HJRestClientManager.NotificationRequestModel] = requestModel
-                resultDict[HJRestClientManager.NotificationCallIdentifier] = callIdentifier
-                resultDict[HJRestClientManager.NotificationHttpStatus] = urlResponse?.statusCode
-                resultDict[HJRestClientManager.NotificationHttpHeaders] = urlResponse?.allHeaderFields
                 let resourceKey = cacheKey(forMethod: method, serverAddress: serverAddress, endpoint: endpoint, requestModel: requestModel, dogma: dogma)
                 let httpStatus = (urlResponse != nil) ? InterestedHttpStatus(rawValue: urlResponse!.statusCode) ?? .dontcareJustLikeError : .dontcareJustLikeError
                 switch httpStatus {
@@ -877,6 +933,7 @@ extension HJRestClientManager {
         var resultDict:[String:Any] = [:]
         resultDict[HJRestClientManager.NotificationEvent] = Event.doneRequestGroup.rawValue
         resultDict[HJRestClientManager.NotificationGruopIdentifier] = group.identifier
+        resultDict[HJRestClientManager.NotificationCallIdentifier] = group.callIdentifier
         resultDict[HJRestClientManager.NotificationRequestGroupResults] = results
         resultDict[HJRestClientManager.NotificationRequestGroupStopped] = stopped
         if let completion = group.completion {
@@ -899,7 +956,7 @@ extension HJRestClientManager {
         
         if group.stopWhenFailed == true, let result = doneRequestResult, let eventValue = result[HJRestClientManager.NotificationEvent] as? Int, let event = Event(rawValue: eventValue) {
             switch event {
-            case .loadRemote, .loadSkip, .loadCache, .custom :
+            case .loadRemote, .loadSkip, .custom :
                 break
             default :
                 objc_sync_enter(self)
@@ -1303,12 +1360,10 @@ extension HJRestClientManager {
         })
     }
     
-    @objc public func filePathOfSharedData(forKey key:String) -> String! {
+    @objc public func filePathOfSharedData(forKey key:String) -> String? {
         
         if let repositoryPath = self.repositoryPath {
-            if let encodedKey = key.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed) {
-                return repositoryPath + "/\(encodedKey)"
-            }
+            return repositoryPath + "/\(hashKey(fromString: key))"
         }
         
         return nil
@@ -1316,7 +1371,7 @@ extension HJRestClientManager {
     
     @objc public func cacheKey(forMethod method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, dogma:HJRestClientDogma?) -> String {
         
-        var cacheKey = "\(name() ?? "hjrestclientmanager"):\(method.rawValue):\(serverAddress)"
+        var cacheKey = "hjrestclientmanager:cachekey:\(method.rawValue):\(serverAddress)"
         
         if let parameters = requestModel as? [String:Any] {
             var subKey:String = ""
