@@ -11,10 +11,11 @@ Pod::Spec.new do |s|
   s.requires_arc = true
 
   s.source       = { :git => "https://github.com/P9SOFT/HJRestClientManager.git", :tag => "1.0.1" }
+  s.swift_version = "4.2"
   s.source_files  = "Sources/*.swift"
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
 
-  s.dependency 'HJHttpApiExecutor', '~> 2.0.2'
-  s.dependency 'HJResourceManager', '~> 2.0.2'
+  s.dependency 'HJHttpApiExecutor', '~> 2.0.3'
+  s.dependency 'HJResourceManager', '~> 2.0.3'
 
 end

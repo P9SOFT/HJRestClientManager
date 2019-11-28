@@ -5,9 +5,9 @@ project './SimpleClient/SimpleClient'
 
 target "SimpleClient" do
 	pod 'Hydra'
-	pod 'HJAsyncHttpDeliverer', :path => '~/Workspace/OpenSources/HJAsyncHttpDeliverer'
-	pod 'HJHttpApiExecutor', :path => '~/Workspace/OpenSources/HJHttpApiExecutor'
-	pod 'HJResourceManager', :path => '~/Workspace/OpenSources/HJResourceManager'
+	pod 'HJAsyncHttpDeliverer'
+	pod 'HJHttpApiExecutor'
+	pod 'HJResourceManager'
 	pod 'JSONModel'
 	pod 'ObjectMapper', '~> 3.4'
 end
