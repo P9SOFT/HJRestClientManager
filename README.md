@@ -220,7 +220,7 @@ We usually do sepratate server address and endpoint of API.
 You can do it with describe endpoint by dividing address.
 
 ```swift
-HJRestClientManager.request().serverAddress("your.apiserver.com".endpoint("/v1/hello").post().requestModel(req).responseModelRefer: Res.self).resume() { (result:[String: Any]?) -> [String: Any]? in
+HJRestClientManager.request().serverAddress("your.apiserver.com").endpoint("/v1/hello").post().requestModel(req).responseModelRefer: Res.self).resume() { (result:[String: Any]?) -> [String: Any]? in
     if let model = result?[HJRestClientManager.NotificationResponseModel] as? Res {
         print("gotta")
     }
