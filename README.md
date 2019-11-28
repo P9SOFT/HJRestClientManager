@@ -272,7 +272,7 @@ HJRestClientManager.request().apiKey("hello").post().requestModel(req).responseM
 Sometimes, you may want to replace some endpoint's path components by request information.
 For instance, API /api/hello allow nickname and message by last two components.
 
-http://your.apiserver.com/api/hello/<nickname>/<message>
+http://your.apiserver.com/api/hello/&ltnickname&gt/&ltmessage&gt
 
 You can make url string before call request, or reserve replace components and pass the parameters like this.
 The key $0 and $1 below is not reserved word, so you can use any key word as you wish.
