@@ -92,6 +92,10 @@ class ViewController: UIViewController {
     
     @IBAction func sendButtonTouchUpInside(_ sender: Any) {
         
+    }
+    
+    @IBAction func testButtonTouchUpInside(_ sender: Any) {
+        
 //        guard let serverAddress = serverAddressTextField.text, serverAddress.count > 0 else {
 //            return
 //        }
