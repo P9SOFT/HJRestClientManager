@@ -9,7 +9,7 @@ You can download the latest framework files from our Release page.
 HJRestClientManager also available through CocoaPods. To install it simply add the following line to your Podfile.  
 pod 'HJRestClientManager' 
 
-# Simaple Preview
+# Simple Preview
 
 Here is sample code to calling API that 'http://your.apiserver.com/hello?a=1' by GET method.
 
