@@ -220,7 +220,7 @@ We usually do sepratate server address and endpoint of API.
 You can do it with describe endpoint by dividing address.
 
 ```swift
-HJRestClientManager.request().serverAddress("your.apiserver.com".endpoint("/v1/hello").post().requestModel(req).responseModelRefer: Res.self).resume() { (result:[String: Any]?) -> [String: Any]? in
+HJRestClientManager.request().serverAddress("your.apiserver.com").endpoint("/v1/hello").post().requestModel(req).responseModelRefer: Res.self).resume() { (result:[String: Any]?) -> [String: Any]? in
     if let model = result?[HJRestClientManager.NotificationResponseModel] as? Res {
         print("gotta")
     }
@@ -272,7 +272,7 @@ HJRestClientManager.request().apiKey("hello").post().requestModel(req).responseM
 Sometimes, you may want to replace some endpoint's path components by request information.
 For instance, API /api/hello allow nickname and message by last two components.
 
-http://your.apiserver.com/api/hello/<nickname>/<message>
+http://your.apiserver.com/api/hello/ &lt;nickname&gt; / &lt;message&gt;
 
 You can make url string before call request, or reserve replace components and pass the parameters like this.
 The key $0 and $1 below is not reserved word, so you can use any key word as you wish.
