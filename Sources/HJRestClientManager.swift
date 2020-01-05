@@ -1372,7 +1372,9 @@ extension HJRestClientManager {
     @objc public func cacheKey(forMethod method:HJHttpApiExecutorHttpMethodType, serverAddress:String, endpoint:String?, requestModel:Any?, dogma:HJRestClientDogma?) -> String {
         
         var cacheKey = "hjrestclientmanager:cachekey:\(method.rawValue):\(serverAddress)"
-        
+        if let endpoint = endpoint, endpoint.count > 0 {
+            cacheKey += "/\(endpoint)"
+        }
         if let parameters = requestModel as? [String:Any] {
             var subKey:String = ""
             let keys = parameters.keys.sorted()
