@@ -228,6 +228,9 @@ class ViewController: UIViewController {
             HJRestClientManager.shared.setShared(data: "hello, world!", forKey: "test")
             DispatchQueue.main.asyncAfter(deadline: .now()+2, execute: {
                 HJRestClientManager.shared.removeSharedData(forKey: "test")
+                if let res = reqC.cachedResponseModel(expireTimeInterval: 0) {
+                    print(res)
+                }
             })
         }
         
