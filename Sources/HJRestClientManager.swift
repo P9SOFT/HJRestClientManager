@@ -210,6 +210,20 @@ open class HJRestClientManager : HYManager {
         @objc public func resume() {
             HJRestClientManager.shared.request(self, completion: nil)
         }
+        
+        @objc public func cachedResponseModel(expireTimeInterval:TimeInterval) -> Any? {
+            
+            if let apiKey = apiKey {
+                return HJRestClientManager.shared.cachedResponseModel(method: method, apiKey: apiKey, requestModel: requestModel, responseModelRefer: responseModelRefer, dogmaKey: dogmaKey, expireTimeInterval: expireTimeInterval)
+            }
+            if let serverAddress = serverAddress {
+                return HJRestClientManager.shared.cachedResponseModel(method: method, serverAddress: serverAddress, endpoint: endpoint, requestModel: requestModel, responseModelRefer: responseModelRefer, dogmaKey: dogmaKey, expireTimeInterval: expireTimeInterval)
+            }
+            if let serverKey = serverKey ?? HJRestClientManager.shared.defaultServerKey, let serverAddress = HJRestClientManager.shared.serverAddress(forKey: serverKey) {
+                return HJRestClientManager.shared.cachedResponseModel(method: method, serverAddress: serverAddress, endpoint: endpoint, requestModel: requestModel, responseModelRefer: responseModelRefer, dogmaKey: dogmaKey, expireTimeInterval: expireTimeInterval)
+            }
+            return nil
+        }
     }
     
     fileprivate class RequestGroup {
@@ -1053,6 +1067,11 @@ extension HJRestClientManager {
         objc_sync_exit(self)
         
         return true
+    }
+    
+    @objc public func serverAddress(forKey key:String) -> String? {
+        
+        return servers[key]
     }
     
     @objc @discardableResult public func setApiWith(serverKey:String, endpoint:String, forKey key:String) -> Bool {

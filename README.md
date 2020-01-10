@@ -455,7 +455,11 @@ For example, you can get local cached data of above example like this by giving 
 
 ```swift
 if let res = HJRestClientManager.shared.cachedResponseModel(method: .get, endpoint: "/api/hello", requestModel: ["name":"gandalf"], responseModelRefer: Res.self, expireTimeInterval: 60*60) as? Res {
-    print("gotta")
+    print(res)
+}
+
+if let res = HJRestClientManager.request().endpoint("/api/hello").requestModel(["name":"gandalf"]).responseModelRefer(Res.self).cachedResponseModel(expireTimeInterval: 0) as? Res {
+    print(res)
 }
 ```
 
